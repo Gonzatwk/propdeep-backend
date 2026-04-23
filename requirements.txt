@@ -1,0 +1,5 @@
+fastapi
+uvicorn[standard]
+nba_api
+pandas
+python-dotenv
