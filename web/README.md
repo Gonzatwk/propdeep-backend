@@ -14,7 +14,7 @@ npm run dev   # http://localhost:5173
 
 Copia `.env.example` a `.env` (en Cloudflare Pages: Settings > Variables and Secrets):
 
-- `VITE_STRIPE_PAYMENT_LINK`: enlace de pago de Stripe de la preventa de 9 €. Vacío = botón "Preventa abre muy pronto".
+- `VITE_STRIPE_PAYMENT_LINK`: enlace de pago de Stripe de la preventa de 9 €. Vacío = el enlace por defecto de `src/config.js`.
 - `VITE_CONTACT_EMAIL`: correo de contacto y reembolsos.
 - `VITE_API_URL`: URL del backend. Con ella, `/historial` lee `GET /predictions` y `GET /track-record`; vacía, usa `src/data/historial.js`. El backend debe incluir el dominio de la web en `CORS_ORIGINS`.
 
