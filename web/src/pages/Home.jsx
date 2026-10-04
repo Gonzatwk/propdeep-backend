@@ -58,6 +58,9 @@ function Hero() {
           </a>
         </div>
         <p className="mt-4 text-sm text-slate-400">Reembolso completo si no te convence. Solo mayores de 18 años.</p>
+        <p className="mx-auto mt-6 w-fit rounded-full border border-brand/40 bg-brand/10 px-4 py-1.5 text-sm text-orange-200">
+          Los primeros análisis se publican el 20 de octubre, con el inicio de la temporada regular.
+        </p>
       </div>
     </section>
   )
@@ -128,7 +131,7 @@ function TarjetaInforme({ informe }) {
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <p className="font-semibold text-slate-300">Informe en preparación</p>
           <p className="mt-2 text-sm text-slate-500">
-            Lo publicaremos con datos reales de un partido real. Aquí no inventamos ejemplos.
+            Llega el 20 de octubre, con datos reales del primer día de temporada. Aquí no inventamos ejemplos.
           </p>
         </div>
       </div>
