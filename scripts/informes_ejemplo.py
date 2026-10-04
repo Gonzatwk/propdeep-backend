@@ -4,7 +4,7 @@ Uso (con las claves en .env):
     python -m scripts.informes_ejemplo 2026-10-21 --max-events 3
 
 Elige uno con ventaja, uno sin ventaja y uno de confianza baja, y los escribe en
-informes_ejemplo.json para pegarlos en la web. Consume créditos de The Odds API
+web/src/data/informes_ejemplo.json, que es lo que lee la landing. Consume créditos de The Odds API
 (mercados x regiones por partido).
 """
 from __future__ import annotations
@@ -36,7 +36,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("game_date", type=date.fromisoformat)
     parser.add_argument("--max-events", type=int, default=3)
-    parser.add_argument("--out", default="informes_ejemplo.json")
+    parser.add_argument("--out", default="web/src/data/informes_ejemplo.json")
     args = parser.parse_args()
 
     s = get_settings()
