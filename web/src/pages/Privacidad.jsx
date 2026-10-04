@@ -1,14 +1,13 @@
 import LegalLayout from '../components/LegalLayout'
-import Pendiente from '../components/Pendiente'
-import { CONTACT_EMAIL } from '../config'
+import { CONTACT_EMAIL, TITULAR } from '../config'
 
 export default function Privacidad() {
-  const correo = CONTACT_EMAIL || <Pendiente>correo</Pendiente>
+  const correo = <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
   return (
     <LegalLayout title="Política de privacidad">
       <h2>Responsable del tratamiento</h2>
       <p>
-        <Pendiente>nombre y apellidos</Pendiente>, NIF <Pendiente>NIF</Pendiente>. Contacto: {correo}.
+        {TITULAR.nombre}, NIF {TITULAR.nif}, {TITULAR.domicilio}. Contacto: {correo}.
       </p>
       <h2>Qué datos tratamos y para qué</h2>
       <ul>
