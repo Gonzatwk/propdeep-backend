@@ -75,7 +75,7 @@ export default function HistorialPage() {
         <p className="mt-10 text-center text-slate-400">Cargando historial…</p>
       ) : ordenado.length === 0 ? (
         <div className="mt-10 rounded-2xl border-2 border-dashed border-slate-700 p-10 text-center">
-          <p className="font-semibold text-slate-200">El historial empieza con el primer partido de la temporada 2026-27.</p>
+          <p className="font-semibold text-slate-200">El historial empieza el 20 de octubre, con el primer día de la temporada regular 2026-27.</p>
           <p className="mt-2 text-sm text-slate-500">Desde ese día verás aquí cada análisis y su resultado.</p>
         </div>
       ) : (
