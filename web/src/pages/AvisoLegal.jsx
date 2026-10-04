@@ -1,6 +1,5 @@
 import LegalLayout from '../components/LegalLayout'
-import Pendiente from '../components/Pendiente'
-import { CONTACT_EMAIL } from '../config'
+import { CONTACT_EMAIL, TITULAR } from '../config'
 
 export default function AvisoLegal() {
   return (
@@ -8,10 +7,10 @@ export default function AvisoLegal() {
       <h2>Titular del sitio web</h2>
       <p>En cumplimiento de la Ley 34/2002 de servicios de la sociedad de la información (LSSI-CE):</p>
       <ul>
-        <li>Titular: <Pendiente>nombre y apellidos</Pendiente></li>
-        <li>NIF: <Pendiente>NIF</Pendiente></li>
-        <li>Domicilio: <Pendiente>dirección</Pendiente></li>
-        <li>Correo electrónico: {CONTACT_EMAIL || <Pendiente>correo</Pendiente>}</li>
+        <li>Titular: {TITULAR.nombre}</li>
+        <li>NIF: {TITULAR.nif}</li>
+        <li>Domicilio: {TITULAR.domicilio}</li>
+        <li>Correo electrónico: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></li>
       </ul>
       <h2>Objeto</h2>
       <p>
