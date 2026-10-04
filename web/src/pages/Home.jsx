@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import Cta from '../components/Cta'
 import { CONTACT_EMAIL } from '../config'
-import { FECHA_EJEMPLOS, informes } from '../data/informes'
+import { FECHA_EJEMPLOS, informesLanding } from '../data/informes'
 import { fmtNum, fmtPct } from '../format'
 
 const bloques = [
@@ -152,6 +152,12 @@ function TarjetaInforme({ informe }) {
       <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-300">
         {informe.porque.map((p) => <li key={p}>{p}</li>)}
       </ul>
+      {informe.informe && (
+        <details className="mt-4 text-sm text-slate-300">
+          <summary className="cursor-pointer font-semibold text-brand">Leer el informe completo</summary>
+          <p className="mt-2 whitespace-pre-line">{informe.informe}</p>
+        </details>
+      )}
     </article>
   )
 }
@@ -164,7 +170,7 @@ function Ejemplos() {
         Uno con ventaja, uno sin ventaja y uno con confianza baja, para que veas cómo razonamos en cada caso.
       </p>
       <div className="grid gap-6 md:grid-cols-3">
-        {informes.map((inf) => <TarjetaInforme key={inf.tipo} informe={inf} />)}
+        {informesLanding.map((inf) => <TarjetaInforme key={inf.tipo} informe={inf} />)}
       </div>
     </Section>
   )
