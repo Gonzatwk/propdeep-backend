@@ -50,6 +50,11 @@ class BalldontlieClient:
         played = [r for r in rows if _minutes(r.get("min")) > 0]
         return sorted(played, key=lambda r: r["game"]["date"], reverse=True)
 
+    def game(self, game_id: int) -> dict:
+        resp = self._http.get(f"/games/{game_id}")
+        resp.raise_for_status()
+        return resp.json()["data"]
+
     def game_stats(self, game_id: int) -> list[dict]:
         return self._get_all("/stats", {"game_ids[]": game_id}, limit=100)
 
