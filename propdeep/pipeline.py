@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Callable
 from statistics import mean
 
 from .clients.balldontlie import BalldontlieClient, minutes
@@ -112,17 +113,29 @@ def _final(game: dict) -> bool:
     return str(game.get("status", "")).lower() == "final" and bool(game.get("home_team_score"))
 
 
-def scan_day(analyzer: Analyzer, odds: OddsClient, day: date, max_events: int | None = None) -> list[tuple[Analysis, dict, PropLine]]:
+def scan_day(
+    analyzer: Analyzer,
+    odds: OddsClient,
+    day: date,
+    max_events: int | None = None,
+    log: Callable[[str], None] | None = None,
+) -> list[tuple[Analysis, dict, PropLine]]:
     """Analiza todas las props de la jornada. Útil para elegir los informes del día."""
+    log = log or (lambda _msg: None)
     results = []
-    for event in odds.events_on(day)[:max_events]:
-        for prop in odds.player_props(event):
+    events = odds.events_on(day)
+    log(f"{len(events)} partidos en The Odds API para {day}")
+    for event in events[:max_events]:
+        props = odds.player_props(event)
+        log(f"{event.get('away_team')} @ {event.get('home_team')}: {len(props)} props")
+        for prop in props:
             stat = MARKETS[prop.market]
             try:
                 analysis, meta = analyzer.analyze_prop(
                     prop.player, stat, prop.line, prop.over_odds, prop.under_odds, day,
                 )
-            except (LookupError, ValueError):
+            except (LookupError, ValueError) as exc:
+                log(f"  descartada {prop.player} {stat} {prop.line}: {exc}")
                 continue
             meta.update(bookmaker=prop.bookmaker, event_id=prop.event_id)
             results.append((analysis, meta, prop))

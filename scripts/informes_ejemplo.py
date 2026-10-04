@@ -37,11 +37,17 @@ def main() -> None:
     parser.add_argument("game_date", type=date.fromisoformat)
     parser.add_argument("--max-events", type=int, default=3)
     parser.add_argument("--out", default="web/src/data/informes_ejemplo.json")
+    parser.add_argument("--regions", help="Regiones de casas en The Odds API (eu, us, uk, au). Por defecto ODDS_REGIONS.")
     args = parser.parse_args()
 
     s = get_settings()
     analyzer = Analyzer(BalldontlieClient(s.balldontlie_api_key), s.current_season, s.min_edge, s.model_weight)
-    results = scan_day(analyzer, OddsClient(s.odds_api_key, s.odds_regions), args.game_date, args.max_events)
+    odds = OddsClient(s.odds_api_key, args.regions or s.odds_regions)
+    results = scan_day(analyzer, odds, args.game_date, args.max_events, log=print)
+    if not results:
+        print("Sin props que analizar. En pretemporada las casas casi no ofrecen props de jugadores;"
+              " prueba con --regions us o con una fecha de temporada regular.")
+        return
 
     claude = None
     if os.getenv("ANTHROPIC_API_KEY"):
