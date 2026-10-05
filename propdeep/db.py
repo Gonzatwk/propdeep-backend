@@ -10,7 +10,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text, create_engine, select
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, create_engine, inspect, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 
@@ -42,6 +42,13 @@ class Prediction(Base):
     status: Mapped[str] = mapped_column(String(10), default="pending", index=True)
     actual: Mapped[float | None] = mapped_column(Float, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Partido de The Odds API: lo usan la zona de partidos y el muro de pago.
+    event_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    commence_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    home_team: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    away_team: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # Línea visible gratis (unas pocas al día); el resto solo con suscripción.
+    free: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 def make_session_factory(url: str) -> sessionmaker[Session]:
@@ -51,15 +58,33 @@ def make_session_factory(url: str) -> sessionmaker[Session]:
         if url.startswith(prefix):
             url = "postgresql+psycopg://" + url[len(prefix):]
     engine = create_engine(url, connect_args=connect_args)
+    from . import accounts  # noqa: F401 - registra las tablas de cuentas en Base
     Base.metadata.create_all(engine)
+    _add_missing_columns(engine)
     return sessionmaker(engine, expire_on_commit=False)
+
+
+def _add_missing_columns(engine) -> None:
+    """create_all no toca tablas que ya existen: añade las columnas nuevas a mano."""
+    insp = inspect(engine)
+    for table in Base.metadata.sorted_tables:
+        if not insp.has_table(table.name):
+            continue
+        present = {c["name"] for c in insp.get_columns(table.name)}
+        for col in table.columns:
+            if col.name in present:
+                continue
+            ddl = col.type.compile(dialect=engine.dialect)
+            default = " DEFAULT FALSE" if isinstance(col.type, Boolean) else ""
+            with engine.begin() as conn:
+                conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN {col.name} {ddl}{default}'))
 
 
 def content_hash(payload: dict) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def publish(session: Session, *, analysis: dict, report: str, meta: dict) -> Prediction:
+def publish(session: Session, *, analysis: dict, report: str, meta: dict, commit: bool = True) -> Prediction:
     side = analysis["side"]
     p_over = analysis["prob_over_final"]
     record = {
@@ -84,9 +109,15 @@ def publish(session: Session, *, analysis: dict, report: str, meta: dict) -> Pre
         published_at=published_at,
         status="pending" if side else "no_bet",
         content_hash=content_hash({**record, "published_at": published_at.isoformat()}),
+        event_id=meta.get("event_id"),
+        commence_time=meta.get("commence_time"),
+        home_team=meta.get("home_team"),
+        away_team=meta.get("away_team"),
+        free=bool(meta.get("free")),
     )
     session.add(prediction)
-    session.commit()
+    if commit:
+        session.commit()
     return prediction
 
 
