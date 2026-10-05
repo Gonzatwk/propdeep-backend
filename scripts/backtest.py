@@ -320,7 +320,27 @@ class OddsHistory:
             return json.loads(f.read_text(encoding="utf-8"))
         if self.spent + cost_estimate > self.max_credits:
             return None
-        resp = self.http.get(path, params={**params, "apiKey": self.key})
+        import httpx
+
+        resp = None
+        for attempt in range(6):
+            wait = min(120, 5 * 2 ** attempt)
+            try:
+                resp = self.http.get(path, params={**params, "apiKey": self.key})
+            except httpx.TransportError as exc:
+                print(f"  {type(exc).__name__} en The Odds API; reintento en {wait} s")
+                time.sleep(wait)
+                continue
+            if resp.status_code == 429 or resp.status_code >= 500:
+                print(f"  HTTP {resp.status_code} en The Odds API; reintento en {wait} s")
+                time.sleep(wait)
+                continue
+            break
+        if resp is None or resp.status_code == 429 or resp.status_code >= 500:
+            raise SystemExit("The Odds API no responde. Vuelve a lanzarlo: lo descargado no se pierde.")
+        if resp.status_code in (401, 403):
+            raise SystemExit("The Odds API rechaza la clave para cuotas históricas: comprueba que ODDS_API_KEY"
+                             " es la de tu cuenta y que el plan de pago ya está activo.")
         if resp.status_code == 422:  # sin datos para ese momento
             body = {"data": None}
         else:

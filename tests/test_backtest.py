@@ -190,3 +190,27 @@ def test_candidate_distribution_is_right_skewed():
     assert prob_over("pts", 20.0, 8.0, 19.5) < normal("pts", 20.0, 8.0, 19.5)
     assert 0 < prob_over("ast", 2.0, 1.0, 1.5) < 1
     assert prob_over("reb", 8.0, 3.0, 7.5) == pytest.approx(prob_over("reb", 8.0, 3.0, 7.0))
+
+
+def test_odds_history_retries_and_explains_bad_key(tmp_path, monkeypatch):
+    import httpx
+
+    import scripts.backtest as bt
+
+    monkeypatch.setattr(bt.time, "sleep", lambda _s: None)
+    state = {"fails": 1}
+
+    def flaky(request):
+        if state["fails"]:
+            state["fails"] -= 1
+            raise httpx.ReadTimeout("lento", request=request)
+        return httpx.Response(200, json={"data": []}, headers={"x-requests-last": "1"})
+
+    h = bt.OddsHistory("k", tmp_path, "us", ["player_points"], 100)
+    h.http = httpx.Client(base_url="https://x", transport=httpx.MockTransport(flaky))
+    assert h._get("/a", {"date": "d"}, 1) == {"data": []}
+
+    h2 = bt.OddsHistory("k", tmp_path / "b", "us", ["player_points"], 100)
+    h2.http = httpx.Client(base_url="https://x", transport=httpx.MockTransport(lambda r: httpx.Response(401)))
+    with pytest.raises(SystemExit, match="plan de pago"):
+        h2._get("/a", {"date": "d"}, 1)
