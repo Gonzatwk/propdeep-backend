@@ -163,35 +163,6 @@ def test_bdl_fetcher_retries_timeouts_and_resumes(tmp_path, monkeypatch):
     assert state["stats_calls"] == calls
 
 
-def test_candidate_model_fixes_minutes_explosion_and_restores_production():
-    import propdeep.model as prod
-    from scripts import modelo_candidato as cand
-
-    # 1 partido esta temporada con 3 minutos y 4 de la anterior con 30: el caso que daba 123 puntos.
-    values = [2.0, 20.0, 22.0, 18.0, 21.0]
-    mins = [3.0, 30.0, 30.0, 30.0, 30.0]
-    actual = prod.project("pts", prod.compute_trends(values, mins, 11.5, 1), prod.Context())
-    nuevo = cand.project("pts", cand.trends_candidato(values, mins, 11.5, 1), prod.Context())
-    assert actual > 50  # el fallo de producción
-    assert nuevo < 20
-
-    season = synthetic_season()
-    before = prod.project
-    evaluate(season, [Candidate(season.rows[-1], "pts", 15.5, 1.9, 1.9, "x")], 0.03, 0.5, "candidato")
-    assert prod.project is before
-
-
-def test_candidate_distribution_is_right_skewed():
-    from scripts.modelo_candidato import prob_over
-
-    # Con media 20 y mucha dispersión, pasar de 19,5 es menos probable que con la normal.
-    from propdeep.model import prob_over as normal
-
-    assert prob_over("pts", 20.0, 8.0, 19.5) < normal("pts", 20.0, 8.0, 19.5)
-    assert 0 < prob_over("ast", 2.0, 1.0, 1.5) < 1
-    assert prob_over("reb", 8.0, 3.0, 7.5) == pytest.approx(prob_over("reb", 8.0, 3.0, 7.0))
-
-
 def test_odds_history_retries_and_explains_bad_key(tmp_path, monkeypatch):
     import httpx
 

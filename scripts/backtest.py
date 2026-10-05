@@ -415,19 +415,7 @@ class Result:
     profit: float | None  # por unidad, solo si hubo pick
 
 
-def evaluate(season: Season, cands: list[Candidate], min_edge: float, model_weight: float,
-             modelo: str = "actual") -> list[Result]:
-    """modelo: "actual" (propdeep/model.py) o "candidato" (scripts/modelo_candidato.py)."""
-    if modelo == "candidato":
-        import propdeep.model as prod
-        from scripts import modelo_candidato as cand
-
-        saved = prod.project, prod.prob_over
-        prod.project, prod.prob_over = cand.project, cand.prob_over  # solo durante el backtest
-        try:
-            return _evaluate(season, cands, min_edge, model_weight, cand.trends_candidato)
-        finally:
-            prod.project, prod.prob_over = saved
+def evaluate(season: Season, cands: list[Candidate], min_edge: float, model_weight: float) -> list[Result]:
     return _evaluate(season, cands, min_edge, model_weight, compute_trends)
 
 
@@ -605,8 +593,6 @@ def main() -> None:
     parser.add_argument("--minutos-antes", type=int, default=60, help="Foto de cuotas X minutos antes del inicio")
     parser.add_argument("--max-creditos", type=int, default=0, help="Tope de créditos a gastar en esta ejecución")
     parser.add_argument("--estimar", action="store_true", help="Solo calcula los créditos necesarios")
-    parser.add_argument("--modelo", choices=["actual", "candidato", "ambos"], default="ambos",
-                        help="actual = producción; candidato = scripts/modelo_candidato.py")
     parser.add_argument("--cache", default="backtest_cache")
     parser.add_argument("--salida", default="backtest_out")
     args = parser.parse_args()
@@ -641,34 +627,13 @@ def main() -> None:
         if not complete:
             print("Tope de créditos alcanzado: el backtest cubre solo las jornadas descargadas.")
 
-    modelos = ["actual", "candidato"] if args.modelo == "ambos" else [args.modelo]
-    summaries = {}
-    for modelo in modelos:
-        results = evaluate(season, cands, s.min_edge, s.model_weight, modelo)
-        summary = summarize(results)
-        summary.update(modo=args.lineas, temporada=args.temporada, modelo=modelo)
-        out = Path(args.salida) / args.lineas / modelo
-        write_outputs(results, summary, out)
-        print(f"\n##### Modelo {modelo} #####")
-        print_summary(summary, args.lineas)
-        print(f"Detalle en {out}/ (resumen.json y lineas.csv)")
-        summaries[modelo] = summary
-    if len(summaries) == 2:
-        print_comparison(summaries["actual"], summaries["candidato"], args.lineas)
-
-
-def print_comparison(a: dict, c: dict, mode: str) -> None:
-    pa, pc = a["precision_probabilidades"], c["precision_probabilidades"]
-    print("\n===== Actual frente a candidato =====")
-    print(f"Brier modelo:  {pa['brier_modelo']} -> {pc['brier_modelo']}  (moneda al aire = 0.25)")
-    print(f"Brier final:   {pa['brier_final']} -> {pc['brier_final']}")
-    print(f"Logloss final: {pa['logloss_final']} -> {pc['logloss_final']}")
-    if mode != "proxy":
-        for name, s in (("actual", a), ("candidato", c)):
-            p = s["picks"]
-            if p.get("n"):
-                print(f"Picks {name}: n={p['n']} acierto {p['acierto']:.1%} ROI {p['roi']:+.1%}"
-                      f" (IC 95 %: {p['roi_ic95'][0]:+.1%} a {p['roi_ic95'][1]:+.1%})")
+    results = evaluate(season, cands, s.min_edge, s.model_weight)
+    summary = summarize(results)
+    summary.update(modo=args.lineas, temporada=args.temporada)
+    out = Path(args.salida) / args.lineas
+    write_outputs(results, summary, out)
+    print_summary(summary, args.lineas)
+    print(f"\nDetalle en {out}/ (resumen.json y lineas.csv)")
 
 
 if __name__ == "__main__":
