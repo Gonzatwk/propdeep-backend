@@ -12,12 +12,16 @@ export default function Privacidad() {
       <h2>Qué datos tratamos y para qué</h2>
       <ul>
         <li>
-          <strong>Pago de la suscripción:</strong> el pago lo gestiona Stripe. Nosotros recibimos tu nombre, correo y
+          <strong>Aviso de apertura:</strong> si nos dejas tu correo en el formulario, lo usamos solo para escribirte
+          cuando abra PropDeep. Base legal: tu consentimiento, que puedes retirar en cualquier momento escribiéndonos.
+        </li>
+        <li>
+          <strong>Pago de la suscripción (cuando abra):</strong> el pago lo gestiona Stripe. Nosotros recibimos tu nombre, correo y
           el estado del pago, nunca los datos completos de tu tarjeta. Base legal: ejecución del contrato.
         </li>
         <li>
-          <strong>Contacto y reembolsos:</strong> si nos escribes, usamos tu correo y lo que nos cuentes solo para
-          responderte. Base legal: tu consentimiento y, en reembolsos, la ejecución del contrato.
+          <strong>Contacto:</strong> si nos escribes, usamos tu correo y lo que nos cuentes solo para
+          responderte. Base legal: tu consentimiento.
         </li>
         <li>
           <strong>Datos técnicos:</strong> el proveedor de alojamiento registra datos técnicos básicos (como la
@@ -28,7 +32,7 @@ export default function Privacidad() {
       <h2>Proveedores</h2>
       <ul>
         <li>Stripe (pagos).</li>
-        <li>Vercel (alojamiento de la web).</li>
+        <li>Cloudflare (alojamiento de la web y almacenamiento de los correos del aviso de apertura).</li>
       </ul>
       <p>
         Algunos de estos proveedores pueden tratar datos fuera del Espacio Económico Europeo, con las garantías que
@@ -37,7 +41,8 @@ export default function Privacidad() {
       <h2>Cuánto tiempo los guardamos</h2>
       <p>
         Mientras dure tu suscripción y, después, el tiempo que exijan las obligaciones legales y fiscales. Los
-        mensajes de contacto, como máximo un año si no hay relación contractual.
+        mensajes de contacto, como máximo un año si no hay relación contractual. Los correos del aviso de apertura,
+        hasta que te avisemos y, como máximo, seis meses; después los borramos si no te has suscrito.
       </p>
       <h2>Tus derechos</h2>
       <p>

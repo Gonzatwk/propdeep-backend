@@ -47,7 +47,7 @@ export default function Header() {
           <NavLink to="/historial" className={({ isActive }) => `${link} ${isActive ? 'text-white underline decoration-gold decoration-2 underline-offset-[6px]' : ''}`}>Historial</NavLink>
           <a href="/#precio" className={`${link} hidden sm:inline-block`}>Precio</a>
           <span className="tnum mx-1.5 border-2 border-white px-1.5 py-0.5 text-xs font-bold" title="Solo mayores de 18 años">+18</span>
-          <Cta size="sm" className="ml-1 hidden sm:inline-flex">Reservar</Cta>
+          <Cta size="sm" className="ml-1 hidden sm:inline-flex">Avísame</Cta>
         </nav>
       </div>
       <Progreso />

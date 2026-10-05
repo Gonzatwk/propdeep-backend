@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowRight } from '@phosphor-icons/react'
 import { Fragment, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import Avisame from '../components/Avisame'
 import Cta from '../components/Cta'
 import LaLinea from '../components/LaLinea'
 import { CONTACT_EMAIL } from '../config'
@@ -22,7 +23,8 @@ const faqs = [
   ['¿Qué props cubrís?', 'Puntos, rebotes, asistencias y triples de los partidos de la NBA, empezando por los de más interés cada día.'],
   ['¿Cuándo se publican los análisis?', 'Antes de cada jornada, a una hora cómoda para España y Latinoamérica.'],
   ['¿Trabajáis con casas de apuestas?', 'No. No tenemos afiliación ni patrocinio de ningún operador.'],
-  ['¿Cómo funciona el reembolso?', 'Si el primer mes no te convence, nos escribes y te devolvemos los 9\u00a0€. Sin preguntas.'],
+  ['¿Cómo funciona la prueba gratis?', 'Cuando abra, tienes 7 días de acceso completo sin pagar. Si no te convence, no sigues y no pagas nada.'],
+  ['¿Por qué no puedo pagar ya?', 'Porque no cobramos por algo que aún no puedes usar. Déjanos tu correo y te avisamos el día que abra.'],
 ]
 
 const anatomia = ['Jugador y partido', 'Prop y línea', 'Cuota', 'Probabilidad implícita', 'Probabilidad estimada', 'Ventaja', 'Confianza', 'Tres razones']
@@ -64,14 +66,14 @@ function Hero() {
             Análisis estadístico en español de cada prop: tendencias, matchup, contexto y comparación con la línea del mercado. Y cuando no hay ventaja, te lo decimos.
           </p>
           <div className="rise mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-7" style={{ '--i': 9 }}>
-            <Cta>Reservar por 9 €</Cta>
+            <Cta />
             <a href="#la-linea" className="group inline-flex items-center gap-1.5 font-semibold underline decoration-grey underline-offset-4 hover:decoration-gold">
               Pruébalo con un ejemplo
               <ArrowDown aria-hidden className="size-4 transition-transform duration-200 group-hover:translate-y-0.5" />
             </a>
           </div>
           <p className="rise mt-5 text-sm text-muted" style={{ '--i': 10 }}>
-            Reembolso completo si no te convence. Solo mayores de 18 años.
+            Abre el 20 de octubre con 7 días de prueba gratis. Solo mayores de 18 años.
           </p>
           <Leyenda className="rise mt-8" />
         </div>
@@ -318,24 +320,25 @@ function Historial() {
 function Precio() {
   return (
     <section id="precio" className="relative bg-gold text-black">
-      <div className="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1.2fr_1fr] lg:gap-16">
+      <div id="avisame" className="mx-auto grid max-w-6xl scroll-mt-20 gap-12 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1.2fr_1fr] lg:gap-16">
         <div>
-          <Titulo>Reserva tu plaza para el inicio de la temporada</Titulo>
+          <Titulo>Abre el 20 de octubre. Te avisamos.</Titulo>
           <p className="mt-8 flex items-end gap-5">
-            <span className="display lift text-[9rem] leading-[0.78] sm:text-[12rem]">9<span className="ml-[0.06em]">€</span></span>
-            <span className="pb-3 text-lg leading-snug font-medium">el primer mes,<br />preventa de fundadores</span>
+            <span className="display lift tnum text-[9rem] leading-[0.78] sm:text-[12rem]">7</span>
+            <span className="pb-3 text-lg leading-snug font-medium">días de prueba gratis<br />con acceso completo</span>
           </p>
-          <p className="mt-6 max-w-md text-lg leading-relaxed">
-            Acceso desde el primer partido de la temporada. Reembolso completo si no te convence.
+          <p className="mt-6 mb-8 max-w-md text-lg leading-relaxed">
+            No cobramos nada hasta que puedas usarlo. Déjanos tu correo y te escribimos el día que abra.
           </p>
-          <Cta tono="black" className="mt-8" />
+          <Avisame />
         </div>
         <div className="self-end">
-          <dl className="border-t-2 border-black">
+          <p className="text-sm font-semibold">Después de la prueba</p>
+          <dl className="mt-3 border-t-2 border-black">
             <div className="flex items-baseline justify-between gap-6 border-b-2 border-black/30 py-5">
               <dt>
                 <span className="text-lg font-semibold">Mensual</span>
-                <span className="block text-sm">Después del primer mes. Cancelas cuando quieras.</span>
+                <span className="block text-sm">Cancelas cuando quieras.</span>
               </dt>
               <dd className="display tnum shrink-0 text-5xl">15 €<span className="text-xl">/mes</span></dd>
             </div>
@@ -348,8 +351,8 @@ function Precio() {
             </div>
           </dl>
           <p className="mt-6 text-sm leading-relaxed">
-            Pago seguro con Stripe. Puedes cancelar en cualquier momento desde tu cuenta. Si el primer mes no te convence,
-            escríbenos a <a className="font-semibold underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> y te devolvemos los 9&nbsp;€.
+            Solo usamos tu correo para avisarte de la apertura. ¿Dudas? Escríbenos a{' '}
+            <a className="font-semibold underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
           </p>
         </div>
       </div>

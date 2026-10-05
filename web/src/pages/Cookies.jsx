@@ -9,7 +9,7 @@ export default function Cookies() {
       </p>
       <h2>Cookies de terceros al pagar</h2>
       <p>
-        Cuando pulsas el botón de reserva, el pago se hace en la página de Stripe. Stripe puede usar cookies
+        Cuando abra la suscripción, el pago se hará en la página de Stripe. Stripe puede usar cookies
         técnicas necesarias para procesar el pago de forma segura y prevenir el fraude. Puedes consultar su política
         en <a href="https://stripe.com/es/legal/cookies-policy" target="_blank" rel="noopener noreferrer">stripe.com</a>.
       </p>
