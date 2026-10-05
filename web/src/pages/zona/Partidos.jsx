@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarBlank } from '@phosphor-icons/react'
+import { ArrowRight, CalendarBlank, ChatCircleText } from '@phosphor-icons/react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AvisoDemo, AvisoResponsable, Cargando, Fallo, Muro, Pagina } from '../../components/Zona'
 import { abrev, corto, hora, jornada } from '../../lib/equipos'
@@ -52,7 +52,12 @@ export default function Partidos() {
   return (
     <Pagina>
       <AvisoDemo />
-      <h1 className="display text-[3.4rem] leading-none sm:text-[5rem]">Partidos</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="display text-[3.4rem] leading-none sm:text-[5rem]">Partidos</h1>
+        <Link to={enlace('/chat')} className="btn btn-ghost h-11 px-4">
+          <ChatCircleText aria-hidden className="size-5" /> Pregunta a PropDeep
+        </Link>
+      </div>
       {datos?.game_date && (
         <p className="mt-3 flex items-center gap-2 text-lg text-muted first-letter:uppercase">
           <CalendarBlank aria-hidden className="size-5" /> Jornada del {jornada(datos.game_date)} · horas en tu zona horaria

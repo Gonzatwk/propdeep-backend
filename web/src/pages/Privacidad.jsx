@@ -25,6 +25,12 @@ export default function Privacidad() {
           el estado del pago, nunca los datos completos de tu tarjeta. Base legal: ejecución del contrato.
         </li>
         <li>
+          <strong>Chat (suscriptores):</strong> tus preguntas se envían a Anthropic, el proveedor de inteligencia
+          artificial que redacta la respuesta con los datos de PropDeep. No guardamos las conversaciones: solo cuántos
+          mensajes envías cada día, para el límite diario. No escribas datos personales en el chat. Base legal:
+          ejecución del contrato.
+        </li>
+        <li>
           <strong>Contacto:</strong> si nos escribes, usamos tu correo y lo que nos cuentes solo para
           responderte. Base legal: tu consentimiento.
         </li>
@@ -38,6 +44,7 @@ export default function Privacidad() {
       <ul>
         <li>Stripe (pagos).</li>
         <li>El servidor de la API de PropDeep (cuentas y estado de la suscripción).</li>
+        <li>Anthropic (redacta las respuestas del chat).</li>
         <li>El proveedor de correo con el que enviamos el enlace de acceso.</li>
         <li>Cloudflare (alojamiento de la web y almacenamiento de los correos del aviso de apertura).</li>
       </ul>

@@ -22,7 +22,7 @@ export class ErrorApi extends Error {
 }
 
 // Llamada al backend con la sesión, si la hay.
-export async function api(path, { method = 'GET', body, token = leer() } = {}) {
+export async function api(path, { method = 'GET', body, token = leer(), timeout = 15000 } = {}) {
   if (!API_URL) throw new ErrorApi(0, 'Sin servidor configurado')
   const res = await fetch(`${API_URL}${path}`, {
     method,
@@ -31,7 +31,7 @@ export async function api(path, { method = 'GET', body, token = leer() } = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(timeout),
   })
   const datos = await res.json().catch(() => ({}))
   if (!res.ok) throw new ErrorApi(res.status, datos.detail || 'Algo ha fallado. Vuelve a intentarlo.')

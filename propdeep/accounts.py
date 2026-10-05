@@ -170,6 +170,9 @@ def metrics(session: Session) -> dict:
 
 
 def delete_user(session: Session, user: User) -> None:
+    from .chat import ChatUsage
+
+    session.execute(delete(ChatUsage).where(ChatUsage.user_id == user.id))
     session.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
     session.execute(delete(LoginToken).where(LoginToken.email == user.email))
     session.delete(user)

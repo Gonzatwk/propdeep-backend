@@ -58,7 +58,7 @@ def make_session_factory(url: str) -> sessionmaker[Session]:
         if url.startswith(prefix):
             url = "postgresql+psycopg://" + url[len(prefix):]
     engine = create_engine(url, connect_args=connect_args)
-    from . import accounts, picks  # noqa: F401 - registra sus tablas en Base
+    from . import accounts, chat, picks  # noqa: F401 - registra sus tablas en Base
     Base.metadata.create_all(engine)
     _add_missing_columns(engine)
     return sessionmaker(engine, expire_on_commit=False)

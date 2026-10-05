@@ -21,6 +21,7 @@ const faqs = [
   ['¿Me vais a decir a qué apostar?', 'No. Te damos datos y análisis de cada línea para que decidas tú. No damos picks ni recomendaciones: la decisión y el riesgo son tuyos.'],
   ['¿Garantizáis ganancias?', 'No, y desconfía de quien lo haga. Es información orientativa. Apostar siempre implica riesgo de perder dinero y a largo plazo es muy difícil ganar a la casa.'],
   ['¿Qué es «Ejemplo de mis picks»?', 'Los picks del fundador hechos con ayuda de la página. Se publican antes del partido, no se editan y salen todos, también los fallados. Son suyos, no del modelo, y no garantizan nada.'],
+  ['¿Puedo preguntarle cosas?', 'Sí. Con la suscripción tienes un chat en español para preguntar por los partidos y las líneas del día. Responde con los datos de PropDeep y no te dice qué apostar.'],
   ['¿Qué props cubrís?', 'Puntos, rebotes, asistencias y triples de los partidos de la NBA, empezando por los de más interés cada día.'],
   ['¿Cuándo se publican los análisis?', 'Antes de cada jornada, a una hora cómoda para España y Latinoamérica.'],
   ['¿Trabajáis con casas de apuestas?', 'No. No tenemos afiliación ni patrocinio de ningún operador.'],
