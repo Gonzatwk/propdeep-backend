@@ -92,6 +92,10 @@ def test_main_line_and_names():
     assert len(lines) == 1 and lines[0].line == 22.5
     assert strip_suffix("Jaren Jackson Jr.") == strip_suffix("Jaren Jackson")
 
+    other = PropLine("e", "t", "h", "a", "Jaren Jackson Jr.", "player_points", 21.5, 1.9, 1.9, "fd")
+    assert len(main_lines([p(22.5, 1.9, 1.9), other])) == 1
+    assert {x.bookmaker for x in main_lines([p(22.5, 1.9, 1.9), other], by_book=True)} == {"b", "fd"}
+
 
 def test_odds_history_uses_cache_and_respects_budget(tmp_path):
     import httpx

@@ -310,6 +310,7 @@ class OddsHistory:
         self.markets = markets
         self.max_credits = max_credits
         self.minutes_before = minutes_before
+        self.all_books = False  # True: la línea principal de cada casa, no solo una por jugador
         self.spent = 0
         self.remaining: str | None = None
 
@@ -380,7 +381,7 @@ class OddsHistory:
                     break
                 if not snap.get("data"):
                     continue
-                for prop in main_lines(parse_props(snap["data"])):
+                for prop in main_lines(parse_props(snap["data"]), self.all_books):
                     rows = [r for r in by_name.get(strip_suffix(prop.player or ""), []) if r.day == day]
                     if len(rows) == 1:  # si no jugó, la casa anula la apuesta: no cuenta
                         out.append(Candidate(rows[0], MARKETS[prop.market], prop.line,
@@ -391,11 +392,14 @@ class OddsHistory:
         return out, complete
 
 
-def main_lines(props):
-    """De todas las líneas de un jugador y mercado, la principal: la más cercana al 50/50."""
+def main_lines(props, by_book: bool = False):
+    """De todas las líneas de un jugador y mercado, la principal: la más cercana al 50/50.
+
+    Con by_book, la principal de cada casa (para comparar casas y buscar la mejor cuota).
+    """
     best = {}
     for p in props:
-        k = (p.player, p.market)
+        k = (p.player, p.market, p.bookmaker if by_book else None)
         balance = abs(1 / p.over_odds - 1 / p.under_odds)
         if k not in best or balance < best[k][0]:
             best[k] = (balance, p)
@@ -595,6 +599,8 @@ def main() -> None:
     parser.add_argument("--minutos-antes", type=int, default=60, help="Foto de cuotas X minutos antes del inicio")
     parser.add_argument("--max-creditos", type=int, default=0, help="Tope de créditos a gastar en esta ejecución")
     parser.add_argument("--estimar", action="store_true", help="Solo calcula los créditos necesarios")
+    parser.add_argument("--todas-casas", action="store_true",
+                        help="odds-api: una fila por casa (sale de la caché, no gasta créditos de más)")
     parser.add_argument("--cache", default="backtest_cache")
     parser.add_argument("--salida", default="backtest_out")
     args = parser.parse_args()
@@ -624,6 +630,7 @@ def main() -> None:
         if not args.max_creditos:
             raise SystemExit("Pon --max-creditos para no gastar más de la cuenta.")
         hist = OddsHistory(s.odds_api_key, cache, args.regiones, markets, args.max_creditos, args.minutos_antes)
+        hist.all_books = args.todas_casas
         cands, complete = hist.candidates(season, days, stats)
         print(f"Créditos gastados: {hist.spent}; quedan en la cuenta: {hist.remaining}")
         if not complete:
@@ -632,7 +639,7 @@ def main() -> None:
     results = evaluate(season, cands, s.min_edge, s.model_weight)
     summary = summarize(results)
     summary.update(modo=args.lineas, temporada=args.temporada)
-    out = Path(args.salida) / args.lineas
+    out = Path(args.salida) / (args.lineas + ("-casas" if args.lineas == "odds-api" and args.todas_casas else ""))
     write_outputs(results, summary, out)
     print_summary(summary, args.lineas)
     print(f"\nDetalle en {out}/ (resumen.json y lineas.csv)")
