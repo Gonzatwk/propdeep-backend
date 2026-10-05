@@ -30,17 +30,37 @@ for (let fila = 0, y = R; y < 330; fila++, y += 1.5 * R) {
 }
 
 // Vertical (aro arriba, recortada tras el triple) o horizontal (aro a la derecha, a sangre por el borde).
+// Tiro de entrada: el balón sale desde fuera del triple y entra en el aro; entonces estallan los hexágonos.
+const TIRO = { h: 'M95 420Q250 -40 412 244', v: 'M70 300Q120 -70 250 46' }
+const LLEGADA = 1150
+
+function Balon({ d }) {
+  const quieto = typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: no-preference)').matches
+  if (quieto) return null
+  return (
+    <g>
+      <path d={d} className="tray" stroke="var(--acid)" strokeWidth="2" />
+      <g opacity="0">
+        <circle r="10" fill="var(--orange)" stroke="var(--cobalt-deep)" strokeWidth="1.5" />
+        <path d="M-10 0H10M0 -10V10" stroke="var(--cobalt-deep)" strokeWidth="1.2" />
+        <animateMotion dur="1s" begin="0.15s" path={d} fill="freeze" keyPoints="0;1" keyTimes="0;1" calcMode="spline" keySplines="0.3 0 0.7 1" />
+        <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.9;1" dur="1.15s" begin="0.15s" fill="freeze" />
+      </g>
+    </g>
+  )
+}
+
 export default function Court({ horizontal = false, className = '' }) {
   return (
-    <svg viewBox={horizontal ? '0 0 470 500' : '0 0 500 320'} className={className} aria-hidden fill="none">
+    <svg viewBox={horizontal ? '0 0 470 500' : '0 0 500 320'} className={className} aria-hidden fill="none" style={{ '--base': `${LLEGADA}ms` }}>
       <g transform={horizontal ? 'translate(470 0) rotate(90)' : undefined}>
-      <g stroke="var(--line)" strokeWidth="1.4">
+      <g stroke="var(--court-line)" strokeWidth="1.6">
         <path d="M0 0.7H500" />
         <path d="M170 0V190H330V0" />
         <circle cx="250" cy="190" r="60" />
         <path d="M30 0V142A237.5 237.5 0 0 0 470 142V0" />
         <path d="M210 52.5A40 40 0 0 0 290 52.5" />
-        <path d="M220 40H280" strokeWidth="2.4" stroke="var(--ink)" />
+        <path d="M220 40H280" strokeWidth="3" stroke="var(--on-dark)" />
       </g>
       <g>
         {bins.map((b) => (
@@ -53,8 +73,9 @@ export default function Court({ horizontal = false, className = '' }) {
           />
         ))}
       </g>
-      <circle cx="250" cy="52.5" r="7.5" stroke="var(--hot)" strokeWidth="2" />
+      <circle cx="250" cy="52.5" r="7.5" stroke="var(--orange)" strokeWidth="2.5" />
       </g>
+      <Balon d={horizontal ? TIRO.h : TIRO.v} />
     </svg>
   )
 }
@@ -62,7 +83,7 @@ export default function Court({ horizontal = false, className = '' }) {
 // Clave del gráfico: siete hexágonos de frío a caliente.
 export function Leyenda({ className = '' }) {
   return (
-    <div className={`flex items-center gap-3 text-xs font-medium text-muted ${className}`}>
+    <div className={`flex items-center gap-3 text-xs font-medium ${className}`}>
       <span>Por debajo de la línea</span>
       <svg viewBox="0 0 126 18" className="h-[18px] w-[126px] shrink-0" aria-hidden>
         {[-3, -2, -1, 0, 1, 2, 3].map((v, i) => (

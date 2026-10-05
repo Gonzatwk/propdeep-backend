@@ -2,97 +2,161 @@ import { useId, useState } from 'react'
 import { hexPoints } from '../lib/hex'
 import { fmtNum } from '../format'
 
-// Jugador ficticio: puntos en sus últimos 30 partidos. Datos inventados para el ejemplo.
-const PARTIDOS = [18, 27, 22, 31, 24, 19, 26, 29, 21, 25, 33, 23, 17, 28, 24, 26, 20, 30, 22, 25, 27, 16, 24, 29, 23, 26, 21, 35, 25, 28]
-const MIN = 15
-const MAX = 36
+// Jugadores y partidos ficticios, inventados solo para explicar la idea.
+const JUGADORES = [
+  {
+    id: 'escolta',
+    nombre: 'Escolta anotador',
+    stat: 'puntos',
+    linea: 24.5,
+    cuota: 1.85,
+    partidos: [18, 27, 22, 31, 24, 19, 26, 29, 21, 25, 33, 23, 17, 28, 24, 26, 20, 30, 22, 25, 27, 16, 24, 29, 23, 26, 21, 35, 25, 28],
+  },
+  {
+    id: 'pivot',
+    nombre: 'Pívot reboteador',
+    stat: 'rebotes',
+    linea: 10.5,
+    cuota: 2.0,
+    partidos: [12, 9, 14, 11, 13, 10, 15, 12, 8, 13, 11, 14, 12, 16, 10, 13, 9, 12, 14, 11, 13, 12, 10, 15, 11, 12, 13, 9, 14, 12],
+  },
+  {
+    id: 'base',
+    nombre: 'Base organizador',
+    stat: 'asistencias',
+    linea: 8.5,
+    cuota: 1.7,
+    partidos: [7, 9, 8, 6, 10, 8, 7, 9, 5, 8, 11, 7, 8, 9, 6, 8, 10, 7, 8, 9, 7, 6, 9, 8, 10, 7, 8, 9, 6, 8],
+  },
+]
+
 const R = 9
 const COL = R * Math.sqrt(3) + 1.5
-
 const pct = (x) => `${Math.round(x * 100)} %`
-const uno = (x) => x.toFixed(1).replace('.', ',')
 
-export default function LaLinea() {
-  const id = useId()
-  const [linea, setLinea] = useState(24.5)
-  const [cuota, setCuota] = useState(1.85)
-
-  const encima = PARTIDOS.filter((p) => p > linea).length
-  const frecuencia = encima / PARTIDOS.length
-  const implicita = 1 / cuota
-  const ventaja = (frecuencia - implicita) * 100
-  const hayVentaja = ventaja >= 3
-
-  // Columnas de hexágonos apilados, una por valor de puntos.
+function Grafico({ jugador, linea }) {
+  const min = Math.min(...jugador.partidos) - 1
+  const max = Math.max(...jugador.partidos) + 1
   const pila = {}
-  const hexes = PARTIDOS.map((p) => {
+  const hexes = jugador.partidos.map((p) => {
     pila[p] = (pila[p] || 0) + 1
     return { p, n: pila[p] }
   })
-  const ancho = (MAX - MIN + 1) * COL
-  const alto = 6 * R * 1.6 + 34
-  const xDe = (v) => (v - MIN) * COL + COL / 2
-  const xLinea = xDe(linea)
+  const altoMax = Math.max(8, ...Object.values(pila))
+  // Ancho fijo de 24 columnas para que todos los jugadores se vean a la misma escala.
+  const huecos = Math.max(max - min + 1, 24)
+  const margen = Math.floor((huecos - (max - min + 1)) / 2)
+  const ancho = huecos * COL
+  const base = altoMax * R * 1.62 + 30
+  const alto = base + 22
+  const xDe = (v) => (v - min + margen) * COL + COL / 2
+  const paso = max - min > 14 ? 5 : 2
+  const desde = min - margen
+  const hasta = max + margen
+  const marcas = []
+  for (let v = Math.max(0, Math.ceil(desde / paso) * paso); v <= hasta; v += paso) marcas.push(v)
+  const encima = jugador.partidos.filter((p) => p > linea).length
 
   return (
-    <div className="border-y border-ink bg-paper">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1.35fr_1fr] lg:gap-14 lg:py-12">
-        <figure>
-          <svg viewBox={`0 0 ${ancho} ${alto}`} className="w-full" role="img" aria-label={`Puntos en 30 partidos. ${encima} por encima de ${fmtNum(linea)}.`}>
-            <line x1="0" x2={ancho} y1={alto - 22} y2={alto - 22} stroke="var(--ink)" />
-            {hexes.map(({ p, n }) => (
-              <polygon
-                key={`${p}-${n}`}
-                className="bar"
-                points={hexPoints(xDe(p), alto - 22 - R - 2 - (n - 1) * R * 1.62, R)}
-                fill={p > linea ? 'var(--h3)' : 'var(--c3)'}
-              />
-            ))}
-            {Array.from({ length: (MAX - MIN) / 5 + 1 }, (_, i) => MIN + i * 5).map((v) => (
-              <text key={v} x={xDe(v)} y={alto - 5} textAnchor="middle" fontSize="11" fill="var(--muted)" className="tnum">{v}</text>
-            ))}
-            <line x1={xLinea} x2={xLinea} y1="14" y2={alto - 22} stroke="var(--ink)" strokeWidth="2" strokeDasharray="4 3" />
-            <text x={xLinea} y="10" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--ink)">{fmtNum(linea)}</text>
-          </svg>
-          <figcaption className="mt-3 text-xs text-muted">
-            Puntos de un jugador ficticio en sus últimos 30 partidos. Datos inventados para el ejemplo.
+    <svg viewBox={`0 0 ${ancho} ${alto}`} className="w-full" role="img" aria-label={`${jugador.stat} en 30 partidos: ${encima} por encima de ${fmtNum(linea)}.`}>
+      <line x1="0" x2={ancho} y1={base} y2={base} stroke="var(--cobalt-deep)" strokeWidth="1.5" />
+      {hexes.map(({ p, n }) => (
+        <polygon
+          key={`${jugador.id}-${p}-${n}`}
+          className="bar"
+          points={hexPoints(xDe(p), base - R - 2 - (n - 1) * R * 1.62, R)}
+          fill={p > linea ? 'var(--red)' : 'var(--cobalt)'}
+        />
+      ))}
+      {marcas.map((v) => (
+        <text key={v} x={xDe(v)} y={alto - 4} textAnchor="middle" fontSize="11" fill="var(--muted)">{v}</text>
+      ))}
+      <g style={{ transform: `translateX(${xDe(linea)}px)`, transition: 'transform 260ms var(--ease-snap)' }}>
+        <line x1="0" x2="0" y1="18" y2={base} stroke="var(--cobalt-deep)" strokeWidth="2.5" strokeDasharray="5 4" />
+        <rect x="-22" y="0" width="44" height="18" fill="var(--cobalt-deep)" />
+        <text x="0" y="13" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--on-dark)">{fmtNum(linea)}</text>
+      </g>
+    </svg>
+  )
+}
+
+export default function LaLinea() {
+  const id = useId()
+  const [actual, setActual] = useState(JUGADORES[0].id)
+  const [ajustes, setAjustes] = useState(() => Object.fromEntries(JUGADORES.map((j) => [j.id, { linea: j.linea, cuota: j.cuota }])))
+  const jugador = JUGADORES.find((j) => j.id === actual)
+  const { linea, cuota } = ajustes[actual]
+  const cambiar = (campo) => (e) => setAjustes((a) => ({ ...a, [actual]: { ...a[actual], [campo]: Number(e.target.value) } }))
+
+  const encima = jugador.partidos.filter((p) => p > linea).length
+  const frecuencia = encima / jugador.partidos.length
+  const implicita = 1 / cuota
+  const hayVentaja = frecuencia - implicita >= 0.03
+  const min = Math.min(...jugador.partidos)
+  const max = Math.max(...jugador.partidos)
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div role="tablist" aria-label="Jugador de ejemplo" className="flex flex-wrap gap-2">
+        {JUGADORES.map((j) => (
+          <button
+            key={j.id}
+            role="tab"
+            type="button"
+            aria-selected={j.id === actual}
+            onClick={() => setActual(j.id)}
+            className={`btn h-11 px-4 text-lg ${j.id === actual ? 'btn-cobalt [--sweep:var(--cobalt)]' : 'btn-ghost text-cobalt'}`}
+          >
+            {j.nombre}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-x-12 gap-y-8 border-2 border-cobalt-deep bg-paper p-5 sm:p-8 lg:grid-cols-[1.25fr_1fr]">
+        <figure className="lg:row-span-2">
+          <Grafico jugador={jugador} linea={linea} />
+          <figcaption className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted">
+            <span>Cada hexágono es un partido. Últimos 30, {jugador.stat} por partido.</span>
+            <span className="inline-flex items-center gap-1.5"><span className="size-3 bg-red" /> Por encima</span>
+            <span className="inline-flex items-center gap-1.5"><span className="size-3 bg-cobalt" /> Por debajo</span>
           </figcaption>
         </figure>
 
-        <div className="flex flex-col">
-          <label htmlFor={`${id}-l`} className="flex items-baseline justify-between text-sm font-medium">
-            Línea de puntos <span className="tnum display text-2xl">{fmtNum(linea)}</span>
-          </label>
-          <input id={`${id}-l`} type="range" className="slider" min={MIN + 0.5} max={MAX - 1.5} step={1} value={linea} onChange={(e) => setLinea(Number(e.target.value))} />
+        <ol className="space-y-6">
+          <li>
+            <p className="text-sm font-semibold text-muted">1. La casa pone una línea</p>
+            <label htmlFor={`${id}-l`} className="mt-1 block text-lg leading-snug">
+              ¿Hará <strong>más de {fmtNum(linea)} {jugador.stat}</strong>?
+            </label>
+            <input id={`${id}-l`} type="range" className="slider" min={min - 0.5} max={max - 0.5} step={1} value={linea} onChange={cambiar('linea')} />
+          </li>
+          <li>
+            <p className="text-sm font-semibold text-muted">2. Y una cuota</p>
+            <label htmlFor={`${id}-c`} className="mt-1 block text-lg leading-snug">
+              Paga <strong>{fmtNum(cuota)}</strong> por euro: la casa calcula que pasa el <strong className="tnum">{pct(implicita)}</strong> de las veces.
+            </label>
+            <input id={`${id}-c`} type="range" className="slider" min={1.3} max={3} step={0.05} value={cuota} onChange={cambiar('cuota')} />
+          </li>
+          <li>
+            <p className="text-sm font-semibold text-muted">3. Lo comparamos con los datos</p>
+            <p className="mt-1 text-lg leading-snug">
+              En sus últimos 30 partidos la superó <strong className="tnum">{encima} veces</strong>: el <strong className="tnum">{pct(frecuencia)}</strong>.
+            </p>
+          </li>
+        </ol>
 
-          <label htmlFor={`${id}-c`} className="mt-4 flex items-baseline justify-between text-sm font-medium">
-            Cuota del «más de» <span className="tnum display text-2xl">{fmtNum(cuota)}</span>
-          </label>
-          <input id={`${id}-c`} type="range" className="slider" min={1.3} max={3} step={0.05} value={cuota} onChange={(e) => setCuota(Number(e.target.value))} />
-
-          <dl className="mt-6 grid grid-cols-2 border-t border-line">
-            <div className="border-r border-line py-3 pr-4">
-              <dt className="text-xs text-muted">Superó la línea</dt>
-              <dd className="tnum display mt-1 text-4xl text-hot">{pct(frecuencia)}</dd>
-            </div>
-            <div className="py-3 pl-4">
-              <dt className="text-xs text-muted">La cuota implica</dt>
-              <dd className="tnum display mt-1 text-4xl">{pct(implicita)}</dd>
-            </div>
-          </dl>
-
-          <p aria-live="polite" className={`mt-2 px-4 py-3 text-sm leading-snug ${hayVentaja ? 'bg-hot text-on-ink' : 'bg-ink text-on-ink'}`}>
-            {hayVentaja ? (
-              <><strong className="font-semibold">Ventaja de {uno(ventaja)} puntos</strong> con estos números, antes de mirar el contexto.</>
-            ) : (
-              <><strong className="font-semibold">Sin ventaja.</strong> Aquí lo correcto es no apostar.</>
-            )}
-          </p>
-          <p className="mt-3 text-xs leading-relaxed text-muted">
-            La frecuencia es solo el punto de partida. Cada análisis la ajusta por minutos, rival y contexto.
+        <div aria-live="polite" className={`relative overflow-hidden p-5 transition-colors duration-300 ${hayVentaja ? 'bg-red text-on-dark' : 'bg-cobalt-deep text-on-dark'}`}>
+          <p className="display text-[2.4rem] leading-none">{hayVentaja ? 'Hay ventaja' : 'Sin ventaja'}</p>
+          <p className="mt-2 leading-snug">
+            {hayVentaja
+              ? `Pasa más a menudo (${pct(frecuencia)}) de lo que la cuota da por hecho (${pct(implicita)}).`
+              : `Los datos (${pct(frecuencia)}) no superan lo que la cuota da por hecho (${pct(implicita)}). Lo correcto es no apostar.`}
           </p>
         </div>
       </div>
+      <p className="mt-4 text-sm text-muted">
+        Jugadores y datos ficticios. Un análisis real también tiene en cuenta los minutos, el rival y las bajas.
+      </p>
     </div>
   )
 }

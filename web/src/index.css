@@ -2,58 +2,74 @@
 @import "@fontsource-variable/schibsted-grotesk";
 @import "tailwindcss";
 
-/* Un solo tema: un gráfico de tiro impreso. Gris pista, tinta marina y la escala azul/rojo. */
+/* Pista pintada de la Copa NBA: azul cobalto a sangre, líneas blancas, fuego para "por encima"
+   y hielo para "por debajo". Secciones enteras en amarillo ácido y rojo. */
 :root {
   color-scheme: light;
-  --bg: oklch(0.962 0.007 245);
-  --paper: oklch(0.992 0.003 245);
-  --line: oklch(0.8 0.025 255);
-  --line-soft: oklch(0.885 0.014 250);
-  --ink: oklch(0.25 0.065 263);
-  --ink-2: oklch(0.32 0.07 263);
-  --muted: oklch(0.44 0.04 260);
-  --on-ink: oklch(0.96 0.01 245);
-  --on-ink-muted: oklch(0.78 0.035 255);
-  /* Escala divergente: frío = por debajo de la línea, caliente = por encima. */
-  --c3: oklch(0.46 0.15 260);
-  --c2: oklch(0.6 0.12 252);
-  --c1: oklch(0.79 0.065 245);
-  --n0: oklch(0.91 0.012 240);
-  --h1: oklch(0.82 0.075 45);
-  --h2: oklch(0.68 0.15 33);
-  --h3: oklch(0.56 0.2 26);
-  --hot: var(--h3);
-  --cold: var(--c3);
+  --cobalt: oklch(0.44 0.21 266);
+  --cobalt-deep: oklch(0.27 0.15 268);
+  --paper: oklch(0.985 0.006 250);
+  --paper-2: oklch(0.945 0.014 255);
+  --acid: oklch(0.92 0.2 118);
+  --red: oklch(0.57 0.215 27);
+  --orange: oklch(0.75 0.18 55);
+  --ice: oklch(0.86 0.08 225);
+  --line: oklch(0.82 0.03 260);
+  --ink: var(--cobalt-deep);
+  --muted: oklch(0.43 0.07 266);
+  --on-dark: oklch(0.98 0.01 250);
+  --on-dark-muted: oklch(0.86 0.05 260);
+  /* Escala por defecto (sobre papel): frío cobalto, caliente rojo. */
+  --c3: oklch(0.44 0.21 266);
+  --c2: oklch(0.6 0.16 262);
+  --c1: oklch(0.8 0.08 258);
+  --n0: oklch(0.92 0.015 255);
+  --h1: oklch(0.8 0.12 50);
+  --h2: oklch(0.68 0.2 35);
+  --h3: oklch(0.57 0.215 27);
+  --court-line: var(--line);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Sobre la pista azul: hielo para debajo, fuego (rojo → amarillo) para encima. */
+.on-court {
+  --c3: oklch(0.97 0.02 240);
+  --c2: oklch(0.86 0.08 225);
+  --c1: oklch(0.66 0.13 250);
+  --n0: oklch(0.55 0.16 262);
+  --h1: oklch(0.66 0.21 30);
+  --h2: oklch(0.78 0.17 60);
+  --h3: oklch(0.93 0.2 118);
+  --court-line: oklch(0.98 0.01 250 / 0.75);
 }
 
 @theme inline {
   --font-sans: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Big Shoulders Display Variable", "Schibsted Grotesk Variable", sans-serif;
-  --color-bg: var(--bg);
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-deep: var(--cobalt-deep);
   --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-acid: var(--acid);
+  --color-red: var(--red);
+  --color-orange: var(--orange);
+  --color-ice: var(--ice);
   --color-line: var(--line);
-  --color-line-soft: var(--line-soft);
   --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
   --color-muted: var(--muted);
-  --color-on-ink: var(--on-ink);
-  --color-on-ink-muted: var(--on-ink-muted);
-  --color-hot: var(--hot);
-  --color-cold: var(--cold);
-  --color-h1: var(--h1);
-  --color-h2: var(--h2);
-  --color-c1: var(--c1);
+  --color-on-dark: var(--on-dark);
+  --color-on-dark-muted: var(--on-dark-muted);
 }
 
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 5rem;
-  scrollbar-color: var(--line) var(--bg);
+  scrollbar-color: var(--cobalt) var(--paper);
 }
 
 body {
-  background: var(--bg);
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -63,12 +79,13 @@ body {
 h1, h2, h3 { text-wrap: balance; }
 p { text-wrap: pretty; }
 
-::selection { background: var(--ink); color: var(--on-ink); }
-input { caret-color: var(--hot); }
+::selection { background: var(--acid); color: var(--cobalt-deep); }
+input { caret-color: var(--red); }
 
 :focus-visible {
-  outline: 2px solid var(--hot);
+  outline: 3px solid var(--acid);
   outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--cobalt-deep);
 }
 
 a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
@@ -76,16 +93,19 @@ a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .tnum { font-variant-numeric: tabular-nums; }
 
 @layer components {
-  /* Rótulo condensado de marcador: el titular de la casa. */
   .display {
     font-family: var(--font-display);
-    font-weight: 800;
+    font-weight: 850;
     text-transform: uppercase;
-    line-height: 0.92;
+    line-height: 1;
     letter-spacing: 0.002em;
   }
 
+  /* Botones: rótulo de marcador con un barrido de color al pasar por encima. */
   .btn {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -93,66 +113,90 @@ a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
     white-space: nowrap;
     border-radius: 2px;
     font-family: var(--font-display);
-    font-weight: 800;
+    font-weight: 850;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    transition: transform 160ms var(--ease-out), background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+    transition: transform 160ms var(--ease-out), color 220ms ease, border-color 220ms ease;
+  }
+  .btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--sweep, var(--red));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 320ms var(--ease-snap);
   }
   .btn:active { transform: scale(0.97); }
-  .btn-primary { background: var(--ink); color: var(--on-ink); }
-  .btn-ghost { border: 1px solid var(--ink); color: var(--ink); }
+  .btn-acid { background: var(--acid); color: var(--cobalt-deep); --sweep: var(--on-dark); }
+  .btn-cobalt { background: var(--cobalt); color: var(--on-dark); --sweep: var(--red); }
+  .btn-ghost { border: 2px solid currentColor; --sweep: var(--acid); }
   @media (hover: hover) and (pointer: fine) {
-    .btn-primary:hover { background: var(--hot); }
-    .btn-ghost:hover { background: var(--ink); color: var(--on-ink); }
+    .btn:hover::before { transform: scaleX(1); }
+    .btn-ghost:hover { color: var(--cobalt-deep); border-color: var(--acid); }
   }
 
-  /* Deslizadores con la estética del gráfico: carril fino y tirador hexagonal. */
   .slider {
     appearance: none;
     width: 100%;
-    height: 28px;
+    height: 32px;
     background: transparent;
     cursor: pointer;
   }
-  .slider::-webkit-slider-runnable-track { height: 2px; background: var(--ink); }
-  .slider::-moz-range-track { height: 2px; background: var(--ink); }
+  .slider::-webkit-slider-runnable-track { height: 4px; background: var(--cobalt); }
+  .slider::-moz-range-track { height: 4px; background: var(--cobalt); }
   .slider::-webkit-slider-thumb {
     appearance: none;
-    width: 22px;
-    height: 24px;
-    margin-top: -11px;
-    background: var(--ink);
+    width: 26px;
+    height: 30px;
+    margin-top: -13px;
+    background: var(--red);
     clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-    transition: transform 160ms var(--ease-out), background-color 160ms ease;
+    transition: transform 160ms var(--ease-out);
   }
   .slider::-moz-range-thumb {
-    width: 22px;
-    height: 24px;
+    width: 26px;
+    height: 30px;
     border: 0;
     border-radius: 0;
-    background: var(--ink);
+    background: var(--red);
     clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   }
-  .slider:active::-webkit-slider-thumb { transform: scale(1.12); background: var(--hot); }
-  .slider:focus-visible { outline-offset: 6px; }
+  .slider:active::-webkit-slider-thumb { transform: scale(1.15); }
+  .slider:focus-visible { box-shadow: none; outline-offset: 6px; }
 }
 
-/* Entrada: los hexágonos del gráfico aparecen una vez, del aro hacia fuera. */
+.bar { transition: fill 260ms ease; }
+
+@keyframes marquee { to { transform: translateX(-50%); } }
+
 @media (prefers-reduced-motion: no-preference) {
+  /* Hexágonos del gráfico: estallan desde el aro cuando entra el balón. */
   .bin {
     transform-box: fill-box;
     transform-origin: center;
-    animation: bin 620ms var(--ease-out) both;
-    animation-delay: calc(var(--d, 0) * 1ms);
+    animation: bin 560ms var(--ease-snap) both;
+    animation-delay: calc(var(--base, 0ms) + var(--d, 0) * 1ms);
   }
-  @keyframes bin {
-    from { opacity: 0; transform: scale(0.2); }
-  }
-  .rise { animation: rise 640ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(10px); }
-  }
-  .bar { transition: fill 200ms ease; }
+  @keyframes bin { from { opacity: 0; transform: scale(0); } }
+
+  .tray { stroke-dasharray: 6 7; animation: tray 1s linear both; }
+  @keyframes tray { from { opacity: 0; } 20% { opacity: 1; } }
+
+  .rise { animation: rise 700ms var(--ease-snap) both; animation-delay: calc(var(--i, 0) * 90ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+
+  .marquee { animation: marquee 32s linear infinite; }
+
+  /* Titulares que entran con un barrido al aparecer en pantalla. Solo con JS activo. */
+  .js-motion .wipe { clip-path: inset(0 100% 0 0); }
+  .js-motion .wipe.in { clip-path: inset(0 0 0 0); transition: clip-path 900ms var(--ease-snap); transition-delay: calc(var(--i, 0) * 120ms); }
+  .js-motion .lift { opacity: 0; transform: translateY(40px) rotate(-2deg); }
+  .js-motion .lift.in { opacity: 1; transform: none; transition: opacity 600ms ease, transform 800ms var(--ease-snap); transition-delay: calc(var(--i, 0) * 110ms); }
+
+  .pulse { animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
 }
 
 @media (prefers-reduced-motion: reduce) {

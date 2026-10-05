@@ -8,8 +8,8 @@ export default function LegalLayout({ title, children }) {
         <ArrowLeft aria-hidden className="size-4" /> Volver al inicio
       </Link>
       <h1 className="display mt-8 text-[3.2rem] sm:text-[4rem]">{title}</h1>
-      <p className="mt-4 border-b border-ink pb-6 text-sm text-muted">Última actualización: 4 de octubre de 2026</p>
-      <div className="mt-10 space-y-4 leading-relaxed text-ink-2 [&_a]:underline [&_a:hover]:text-hot [&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-ink [&_strong]:text-ink [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6">
+      <p className="mt-4 border-b border-cobalt-deep pb-6 text-sm text-muted">Última actualización: 4 de octubre de 2026</p>
+      <div className="mt-10 space-y-4 leading-relaxed text-ink [&_a]:underline [&_a:hover]:text-red [&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-ink [&_strong]:text-ink [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6">
         {children}
       </div>
     </article>
