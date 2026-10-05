@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom'
+import { hexPoints } from '../lib/hex'
 
-export default function Logo() {
+export default function Logo({ inverso = false }) {
   return (
-    <Link to="/" className="flex items-center gap-2.5 font-semibold tracking-tight" aria-label="PropDeep, inicio">
-      <svg viewBox="0 0 32 32" className="size-7" aria-hidden>
-        <rect width="32" height="32" rx="8" fill="var(--text)" />
-        <path d="M10 23V9h6.5a5 5 0 0 1 0 10H13" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <Link to="/" className="flex items-center gap-2" aria-label="PropDeep, inicio">
+      <svg viewBox="0 0 28 30" className="h-7 w-[26px]" aria-hidden>
+        <polygon points={hexPoints(14, 15, 14)} fill={inverso ? 'var(--on-ink)' : 'var(--ink)'} />
+        <polygon points={hexPoints(14, 15, 6.5)} fill="var(--hot)" />
       </svg>
-      <span className="text-[1.05rem]">PropDeep</span>
+      <span className="display text-[1.6rem] tracking-[0.01em]">PropDeep</span>
     </Link>
   )
 }

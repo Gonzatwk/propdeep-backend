@@ -1,75 +1,60 @@
-@import "@fontsource-variable/geist";
-@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/big-shoulders-display";
+@import "@fontsource-variable/schibsted-grotesk";
 @import "tailwindcss";
 
-/* Tokens semánticos: claro por defecto, oscuro según el sistema. */
+/* Un solo tema: un gráfico de tiro impreso. Gris pista, tinta marina y la escala azul/rojo. */
 :root {
-  color-scheme: light dark;
-  --bg: oklch(0.985 0.003 260);
-  --surface: oklch(0.96 0.004 260);
-  --surface-2: oklch(0.93 0.006 260);
-  --line: oklch(0.88 0.008 260);
-  --text: oklch(0.2 0.012 260);
-  --muted: oklch(0.45 0.014 260);
-  --accent: oklch(0.62 0.17 45);
-  --accent-strong: oklch(0.55 0.17 42);
-  --accent-ink: oklch(0.99 0.01 60);
-  --accent-soft: oklch(0.62 0.17 45 / 0.12);
-  --win: oklch(0.55 0.13 155);
-  --loss: oklch(0.56 0.17 25);
-  --warn-bg: oklch(0.95 0.05 85);
-  --warn-text: oklch(0.36 0.07 70);
-  --shadow: 0 1px 2px oklch(0.2 0.02 260 / 0.06), 0 12px 32px -12px oklch(0.2 0.02 260 / 0.18);
+  color-scheme: light;
+  --bg: oklch(0.962 0.007 245);
+  --paper: oklch(0.992 0.003 245);
+  --line: oklch(0.8 0.025 255);
+  --line-soft: oklch(0.885 0.014 250);
+  --ink: oklch(0.25 0.065 263);
+  --ink-2: oklch(0.32 0.07 263);
+  --muted: oklch(0.44 0.04 260);
+  --on-ink: oklch(0.96 0.01 245);
+  --on-ink-muted: oklch(0.78 0.035 255);
+  /* Escala divergente: frío = por debajo de la línea, caliente = por encima. */
+  --c3: oklch(0.46 0.15 260);
+  --c2: oklch(0.6 0.12 252);
+  --c1: oklch(0.79 0.065 245);
+  --n0: oklch(0.91 0.012 240);
+  --h1: oklch(0.82 0.075 45);
+  --h2: oklch(0.68 0.15 33);
+  --h3: oklch(0.56 0.2 26);
+  --hot: var(--h3);
+  --cold: var(--c3);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: oklch(0.16 0.012 260);
-    --surface: oklch(0.2 0.014 260);
-    --surface-2: oklch(0.24 0.016 260);
-    --line: oklch(0.3 0.016 260);
-    --text: oklch(0.95 0.006 260);
-    --muted: oklch(0.72 0.014 260);
-    --accent: oklch(0.72 0.16 50);
-    --accent-strong: oklch(0.78 0.15 55);
-    --accent-ink: oklch(0.18 0.02 50);
-    --accent-soft: oklch(0.72 0.16 50 / 0.14);
-    --win: oklch(0.75 0.14 155);
-    --loss: oklch(0.72 0.15 25);
-    --warn-bg: oklch(0.27 0.04 75);
-    --warn-text: oklch(0.9 0.07 85);
-    --shadow: 0 1px 2px oklch(0.05 0.02 260 / 0.4), 0 16px 40px -16px oklch(0.05 0.02 260 / 0.7);
-  }
-}
-
 @theme inline {
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --font-sans: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Big Shoulders Display Variable", "Schibsted Grotesk Variable", sans-serif;
   --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
+  --color-paper: var(--paper);
   --color-line: var(--line);
-  --color-ink: var(--text);
+  --color-line-soft: var(--line-soft);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
   --color-muted: var(--muted);
-  --color-accent: var(--accent);
-  --color-accent-strong: var(--accent-strong);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-soft: var(--accent-soft);
-  --color-win: var(--win);
-  --color-loss: var(--loss);
-  --color-warn-bg: var(--warn-bg);
-  --color-warn-text: var(--warn-text);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-muted: var(--on-ink-muted);
+  --color-hot: var(--hot);
+  --color-cold: var(--cold);
+  --color-h1: var(--h1);
+  --color-h2: var(--h2);
+  --color-c1: var(--c1);
 }
 
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 5rem;
+  scrollbar-color: var(--line) var(--bg);
 }
 
 body {
   background: var(--bg);
-  color: var(--text);
+  color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -78,60 +63,96 @@ body {
 h1, h2, h3 { text-wrap: balance; }
 p { text-wrap: pretty; }
 
-::selection { background: var(--accent); color: var(--accent-ink); }
+::selection { background: var(--ink); color: var(--on-ink); }
+input { caret-color: var(--hot); }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--hot);
   outline-offset: 3px;
-  border-radius: 6px;
 }
 
-a { text-underline-offset: 3px; }
-
-html { scrollbar-color: var(--line) transparent; }
-
-/* Grano sutil, fijo y sin eventos: rompe la planitud sin coste al hacer scroll. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
+a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
 
 .tnum { font-variant-numeric: tabular-nums; }
 
 @layer components {
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  white-space: nowrap;
-  border-radius: 999px;
-  font-weight: 600;
-  transition: transform 160ms var(--ease-out), background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+  /* Rótulo condensado de marcador: el titular de la casa. */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 0.92;
+    letter-spacing: 0.002em;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    white-space: nowrap;
+    border-radius: 2px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    transition: transform 160ms var(--ease-out), background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--ink); color: var(--on-ink); }
+  .btn-ghost { border: 1px solid var(--ink); color: var(--ink); }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover { background: var(--hot); }
+    .btn-ghost:hover { background: var(--ink); color: var(--on-ink); }
+  }
+
+  /* Deslizadores con la estética del gráfico: carril fino y tirador hexagonal. */
+  .slider {
+    appearance: none;
+    width: 100%;
+    height: 28px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .slider::-webkit-slider-runnable-track { height: 2px; background: var(--ink); }
+  .slider::-moz-range-track { height: 2px; background: var(--ink); }
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 22px;
+    height: 24px;
+    margin-top: -11px;
+    background: var(--ink);
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    transition: transform 160ms var(--ease-out), background-color 160ms ease;
+  }
+  .slider::-moz-range-thumb {
+    width: 22px;
+    height: 24px;
+    border: 0;
+    border-radius: 0;
+    background: var(--ink);
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  }
+  .slider:active::-webkit-slider-thumb { transform: scale(1.12); background: var(--hot); }
+  .slider:focus-visible { outline-offset: 6px; }
 }
-.btn:active { transform: scale(0.97); }
 
-.btn-primary { background: var(--accent); color: var(--accent-ink); }
-.btn-primary:hover { background: var(--accent-strong); }
-
-.btn-ghost { border: 1px solid var(--line); color: var(--text); }
-.btn-ghost:hover { border-color: var(--muted); }
-}
-
-/* Entrada de la portada: un único momento, ya visible si no hay movimiento. */
+/* Entrada: los hexágonos del gráfico aparecen una vez, del aro hacia fuera. */
 @media (prefers-reduced-motion: no-preference) {
-  .rise {
-    animation: rise 700ms var(--ease-out) both;
-    animation-delay: calc(var(--i, 0) * 80ms);
+  .bin {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: bin 620ms var(--ease-out) both;
+    animation-delay: calc(var(--d, 0) * 1ms);
   }
+  @keyframes bin {
+    from { opacity: 0; transform: scale(0.2); }
+  }
+  .rise { animation: rise 640ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }
   @keyframes rise {
-    from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+    from { opacity: 0; transform: translateY(10px); }
   }
+  .bar { transition: fill 200ms ease; }
 }
 
 @media (prefers-reduced-motion: reduce) {
