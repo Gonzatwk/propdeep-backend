@@ -85,7 +85,7 @@ export default function Avisame() {
         </span>
       </label>
       {estado === 'error' && (
-        <p role="alert" className="mt-4 border-l-4 border-black pl-3 text-sm font-semibold">
+        <p role="alert" className="mt-4 bg-black px-4 py-3 text-sm font-semibold text-white [&_a]:text-gold">
           {error || (
             <>
               No hemos podido guardarlo. Escríbenos a{' '}
