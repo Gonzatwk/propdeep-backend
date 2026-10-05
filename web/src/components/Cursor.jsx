@@ -65,7 +65,7 @@ export default function Cursor() {
   if (!activo) return null
   return (
     <>
-      <div ref={aro} aria-hidden className="cursor-aro" style={{ opacity: 0 }} />
+      <div ref={aro} aria-hidden className="cursor-aro" style={{ opacity: 0 }}><span /></div>
       <div ref={punto} aria-hidden className="cursor-punto" />
     </>
   )

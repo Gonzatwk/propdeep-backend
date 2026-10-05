@@ -98,15 +98,17 @@ a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
   border-radius: 9999px;
 }
 .cursor-punto { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: var(--gold); }
-.cursor-aro {
-  width: 40px;
-  height: 40px;
-  margin: -20px 0 0 -20px;
+.cursor-aro { width: 40px; height: 40px; margin: -20px 0 0 -20px; transition: opacity 300ms; }
+.cursor-aro > span {
+  display: block;
+  width: 100%;
+  height: 100%;
   border: 2px solid var(--gold);
-  transition: width 250ms var(--ease-out), height 250ms var(--ease-out), margin 250ms var(--ease-out), background-color 250ms, opacity 300ms;
+  border-radius: 9999px;
+  transition: transform 250ms var(--ease-out), background-color 250ms;
 }
-.cursor-aro.sobre { width: 68px; height: 68px; margin: -34px 0 0 -34px; background: oklch(0.82 0.14 86 / 0.18); }
-.cursor-aro.pulsado { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+.cursor-aro.sobre > span { transform: scale(1.7); background: oklch(0.82 0.14 86 / 0.18); }
+.cursor-aro.pulsado > span { transform: scale(0.7); }
 .cursor-onda { width: 40px; height: 40px; margin: -20px 0 0 -20px; border: 2px solid var(--gold); animation: onda-cursor 600ms var(--ease-out) forwards; }
 @keyframes onda-cursor { from { transform: scale(0.4); opacity: 1; } to { transform: scale(2.6); opacity: 0; } }
 .estela { fill: none; stroke: var(--gold); stroke-width: 2; stroke-linecap: round; }
