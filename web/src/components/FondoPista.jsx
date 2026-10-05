@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { ARO, TIROS } from '../lib/tiros'
 import Pista from './Pista'
 
-const MIN = 45
+// Tiros que se ven arriba del todo; al bajar el campo se apaga.
+const CAMPO = TIROS.slice(0, 130)
 const quieto = () => !window.matchMedia('(prefers-reduced-motion: no-preference)').matches
 
 function Tiro({ t }) {
@@ -19,22 +20,21 @@ function Tiro({ t }) {
 }
 
 // Fondo fijo de toda la web: media pista en blanco y negro con un campo de tiros.
-// Al bajar aparecen más tiros, cada pocos segundos entra un tiro en directo
-// y en escritorio un foco dorado sigue al ratón.
+// Se ve entero arriba del todo y se apaga al bajar, para no molestar al leer.
+// Arriba, cada pocos segundos entra un tiro en directo; en escritorio un foco
+// dorado sigue al ratón.
 export default function FondoPista() {
-  const [visibles, setVisibles] = useState(() => (quieto() ? TIROS.length : MIN))
+  const raiz = useRef(null)
   const vivo = useRef(null)
   const foco = useRef(null)
 
   useEffect(() => {
-    if (quieto()) return
     let raf = 0
     const alHacerScroll = () => {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
-        const max = document.documentElement.scrollHeight - innerHeight
-        const p = max > 0 ? Math.min(1, scrollY / max) : 1
-        setVisibles(Math.round(MIN + p * (TIROS.length - MIN)))
+        const k = Math.min(1, scrollY / (innerHeight * 0.9))
+        raiz.current?.style.setProperty('--apagado', k.toFixed(3))
       })
     }
     alHacerScroll()
@@ -54,7 +54,7 @@ export default function FondoPista() {
     let espera = 0
     const lanzar = () => {
       if (parar) return
-      if (document.hidden) {
+      if (document.hidden || scrollY > innerHeight * 0.5) {
         espera = setTimeout(lanzar, 1500)
         return
       }
@@ -126,11 +126,13 @@ export default function FondoPista() {
   }, [])
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    <div ref={raiz} aria-hidden className="fondo pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <svg viewBox="-10 -10 520 490" preserveAspectRatio="xMidYMin slice" className="fondo-svg h-full w-full">
-        <Pista dibujar />
-        <g>
-          {TIROS.slice(0, visibles).map((t) => <Tiro key={t.i} t={t} />)}
+        <g className="fondo-pista">
+          <Pista dibujar />
+        </g>
+        <g className="fondo-tiros">
+          {CAMPO.map((t) => <Tiro key={t.i} t={t} />)}
         </g>
         <g ref={vivo} />
       </svg>

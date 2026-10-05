@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowRight } from '@phosphor-icons/react'
-import { Fragment } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import Cta from '../components/Cta'
 import LaLinea from '../components/LaLinea'
@@ -149,13 +149,40 @@ function ComoFunciona() {
   )
 }
 
+// Mientras la sección cruza la pantalla, las dos líneas del titular se
+// desplazan en sentidos opuestos.
+function useDeslizar() {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return
+    const el = ref.current
+    let raf = 0
+    const actualizar = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect()
+        const p = (innerHeight - r.top) / (innerHeight + r.height)
+        el.style.setProperty('--d', Math.max(0, Math.min(1, p)).toFixed(4))
+      })
+    }
+    actualizar()
+    addEventListener('scroll', actualizar, { passive: true })
+    return () => {
+      cancelAnimationFrame(raf)
+      removeEventListener('scroll', actualizar)
+    }
+  }, [])
+  return ref
+}
+
 function SinVentaja() {
+  const ref = useDeslizar()
   return (
-    <section className="relative overflow-hidden bg-white text-black">
+    <section ref={ref} className="relative overflow-hidden bg-white text-black">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
         <h2 className="display text-[4.4rem] sm:text-[8rem] lg:text-[10.5rem]">
-          <span className="lift block">Sin ventaja,</span>
-          <span className="lift hueco hueco-negro block" style={{ '--i': 1 }}>no hay jugada.</span>
+          <span className="lift block"><span className="deslizar block">Sin ventaja,</span></span>
+          <span className="lift hueco hueco-negro block" style={{ '--i': 1 }}><span className="deslizar deslizar-inverso block">no hay jugada.</span></span>
         </h2>
         <p className="mt-8 max-w-2xl text-lg leading-relaxed font-medium">
           La mayoría de servicios te dan picks todos los días, haya valor o no. Nosotros comparamos nuestra probabilidad con

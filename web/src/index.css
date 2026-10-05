@@ -74,8 +74,41 @@ a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
   inset: 0;
   opacity: 0;
   transition: opacity 600ms ease;
-  background: radial-gradient(260px circle at var(--fx, 50%) var(--fy, 50%), oklch(0.82 0.14 86 / 0.13), transparent 70%);
+  background: radial-gradient(360px circle at var(--fx, 50%) var(--fy, 50%), oklch(0.82 0.14 86 / 0.2), transparent 70%);
 }
+.fondo-tiros { opacity: calc(1 - 0.94 * var(--apagado, 0)); }
+.fondo-pista { opacity: calc(1 - 0.55 * var(--apagado, 0)); }
+
+/* Titular de "Sin ventaja" que se desliza con el scroll. */
+.deslizar { transform: translateX(calc(var(--d, 0) * 6%)); will-change: transform; }
+.deslizar-inverso { transform: translateX(calc((1 - var(--d, 0)) * 6%)); }
+
+/* Barra de progreso con balón bajo la cabecera. */
+.progreso-linea { transform-origin: left; transform: scaleX(var(--p, 0)); }
+.progreso-balon { opacity: clamp(0, calc(var(--p, 0) * 60), 1); left: calc(var(--p, 0) * (100% - 1rem)); transform: rotate(calc(var(--p, 0) * 1440deg)); }
+
+/* Cursor propio: punto dorado exacto y aro que lo sigue con retraso. */
+.cursor-propio, .cursor-propio * { cursor: none !important; }
+.cursor-punto, .cursor-aro, .cursor-onda {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  pointer-events: none;
+  border-radius: 9999px;
+}
+.cursor-punto { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: var(--gold); }
+.cursor-aro {
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 2px solid var(--gold);
+  transition: width 250ms var(--ease-out), height 250ms var(--ease-out), margin 250ms var(--ease-out), background-color 250ms, opacity 300ms;
+}
+.cursor-aro.sobre { width: 68px; height: 68px; margin: -34px 0 0 -34px; background: oklch(0.82 0.14 86 / 0.18); }
+.cursor-aro.pulsado { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+.cursor-onda { width: 40px; height: 40px; margin: -20px 0 0 -20px; border: 2px solid var(--gold); animation: onda-cursor 600ms var(--ease-out) forwards; }
+@keyframes onda-cursor { from { transform: scale(0.4); opacity: 1; } to { transform: scale(2.6); opacity: 0; } }
 .estela { fill: none; stroke: var(--gold); stroke-width: 2; stroke-linecap: round; }
 .balon { fill: var(--gold); stroke: var(--black); stroke-width: 1.5; }
 .onda { fill: none; stroke: var(--gold); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: onda 900ms var(--ease-out) forwards; }

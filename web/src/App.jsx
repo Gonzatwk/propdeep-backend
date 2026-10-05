@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import Anuncio from './components/Anuncio'
+import Cursor from './components/Cursor'
 import Footer from './components/Footer'
 import FondoPista from './components/FondoPista'
 import Header from './components/Header'
@@ -45,6 +46,7 @@ export default function App() {
       </main>
       <Footer />
       <RelojPosesion />
+      <Cursor />
     </div>
   )
 }

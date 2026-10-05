@@ -1,8 +1,41 @@
+import { useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import Cta from './Cta'
 import Logo from './Logo'
 
 const link = 'px-2.5 py-1.5 text-sm font-semibold text-muted transition-colors hover:text-gold'
+
+// Línea dorada bajo la cabecera que avanza con el scroll, con un balón en la punta.
+function Progreso() {
+  const ref = useRef(null)
+  useEffect(() => {
+    let raf = 0
+    const actualizar = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const max = document.documentElement.scrollHeight - innerHeight
+        ref.current?.style.setProperty('--p', max > 0 ? Math.min(1, scrollY / max).toFixed(4) : '0')
+      })
+    }
+    actualizar()
+    addEventListener('scroll', actualizar, { passive: true })
+    addEventListener('resize', actualizar)
+    return () => {
+      cancelAnimationFrame(raf)
+      removeEventListener('scroll', actualizar)
+      removeEventListener('resize', actualizar)
+    }
+  }, [])
+  return (
+    <div ref={ref} aria-hidden className="progreso pointer-events-none absolute inset-x-0 -bottom-px h-[3px]">
+      <div className="progreso-linea h-full bg-gold" />
+      <svg viewBox="0 0 30 30" className="progreso-balon absolute -top-[6.5px] size-4">
+        <circle cx="15" cy="15" r="13" fill="var(--gold)" stroke="var(--black)" strokeWidth="2" />
+        <path d="M2 15H28M15 2V28M5.5 6.5C10 10 10 20 5.5 23.5M24.5 6.5C20 10 20 20 24.5 23.5" fill="none" stroke="var(--black)" strokeWidth="2" />
+      </svg>
+    </div>
+  )
+}
 
 export default function Header() {
   return (
@@ -17,6 +50,7 @@ export default function Header() {
           <Cta size="sm" className="ml-1 hidden sm:inline-flex">Reservar</Cta>
         </nav>
       </div>
+      <Progreso />
     </header>
   )
 }
