@@ -26,7 +26,7 @@ function Linea({ l, enlace, eventId }) {
         Más {fmtCuota(l.over_odds)} · Menos {fmtCuota(l.under_odds)} · {l.books_count} {l.books_count === 1 ? 'casa' : 'casas'}
       </span>
       <span className="mt-3 block min-h-7">
-        {l.locked ? <Bloqueada /> : (
+        {l.locked ? <Bloqueada partidos={l.teaser_games} /> : (
           <span className="tnum block text-sm">
             <span className="text-muted">Proyección</span> <strong className="font-semibold">{fmtNum(l.projection)}</strong>
             <span className="mt-1 block text-xs text-muted">

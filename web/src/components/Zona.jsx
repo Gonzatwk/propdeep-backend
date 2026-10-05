@@ -1,7 +1,7 @@
 import { ArrowClockwise, ArrowLeft, Eye, LockSimple } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { useModo } from '../lib/tablero'
-import { PRECIO, useIrASuscribir } from '../lib/zona'
+import { PRECIO, TEXTO_SUBIDA, subidaPendiente, useIrASuscribir } from '../lib/zona'
 
 
 // Contenedor de las páginas de la zona: fondo opaco para leer datos sin ruido.
@@ -59,7 +59,21 @@ export function Tasa({ valor, partidos, etiqueta, grande = false }) {
   )
 }
 
-export function Bloqueada() {
+// Muro con curiosidad: el titular se ve, el número no (no llega al navegador).
+export function Bloqueada({ partidos }) {
+  if (partidos) {
+    return (
+      <span className="block text-sm">
+        <span className="text-muted">Superó la línea en </span>
+        <span aria-hidden className="tnum inline-block w-[1.6em] bg-white/40 text-center font-bold text-white blur-[3px] select-none">?</span>
+        <span className="sr-only">un número oculto</span>
+        <span className="text-muted"> de sus últimos {partidos}</span>
+        <span className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-gold">
+          <LockSimple aria-hidden weight="bold" className="size-3.5" /> Ver con la suscripción
+        </span>
+      </span>
+    )
+  }
   return (
     <span className="inline-flex items-center gap-1.5 border border-dashed border-white/30 px-2 py-0.5 text-sm text-muted">
       <LockSimple aria-hidden weight="bold" className="size-3.5" /> Con suscripción
@@ -78,11 +92,17 @@ export function Muro({ bloqueadas, compacto = false }) {
       <p className="mt-3 max-w-xl text-muted">
         Con la suscripción ves el análisis de cada línea: proyección, cuántas veces superó la línea, casa y fuera, el rival,
         las líneas de cada casa, el informe y el chat para preguntar por los datos. Prueba {PRECIO.prueba} días gratis;
-        después {PRECIO.mensual} € al mes o {PRECIO.anual} € al año. Cancelas cuando quieras.
+        después {PRECIO.mensual} € al mes, {PRECIO.anual} € al año o Pro a {PRECIO.pro} € con el chat completo. Cancelas cuando quieras.
       </p>
-      <Link to={destino} className="btn btn-gold mt-5 h-12 px-6 text-lg">
-        Probar {PRECIO.prueba} días gratis
-      </Link>
+      {subidaPendiente() && <p className="mt-3 max-w-xl text-sm font-semibold">{TEXTO_SUBIDA}</p>}
+      <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <Link to={destino} className="btn btn-gold h-12 px-6 text-lg">
+          Probar {PRECIO.prueba} días gratis
+        </Link>
+        <Link to={destino} className="text-sm font-semibold underline decoration-grey underline-offset-4 hover:decoration-gold">
+          O un pase de 7 días por {PRECIO.pase} €, sin renovación
+        </Link>
+      </div>
     </aside>
   )
 }

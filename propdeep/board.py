@@ -151,6 +151,9 @@ def line_summary(p: Prediction, unlocked: bool) -> dict:
             hit_rates=_hit_rates(a.get("trends") or {}),
             best=best_prices(books),
         )
+    else:
+        # Muro con curiosidad: se dice sobre cuántos partidos es el dato, nunca el dato.
+        out["teaser_games"] = min(10, (a.get("trends") or {}).get("games") or 0) or None
     return out
 
 

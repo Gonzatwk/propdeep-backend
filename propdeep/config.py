@@ -44,6 +44,14 @@ class Settings:
     stripe_webhook_secret: str = field(default_factory=lambda: os.getenv("STRIPE_WEBHOOK_SECRET", ""))
     stripe_price_monthly: str = field(default_factory=lambda: os.getenv("STRIPE_PRICE_MONTHLY", ""))
     stripe_price_yearly: str = field(default_factory=lambda: os.getenv("STRIPE_PRICE_YEARLY", ""))
+    # Plan Pro (25 €/mes, con el chat completo). Sin él no hay plan Pro y el chat es igual para todos.
+    stripe_price_pro: str = field(default_factory=lambda: os.getenv("STRIPE_PRICE_PRO", ""))
+    # Pase de 7 días (5 €, pago único sin renovación).
+    stripe_price_pass: str = field(default_factory=lambda: os.getenv("STRIPE_PRICE_PASS", ""))
+    # Mensajes de chat al día en los planes que no son Pro (solo cuenta si existe el plan Pro).
+    chat_messages_per_day_basic: int = field(default_factory=lambda: int(os.getenv("CHAT_MESSAGES_PER_DAY_BASIC", "5")))
+    # Auditoría de tipsters: se ve en la web solo cuando esto vale "true".
+    tipsters_public: bool = field(default_factory=lambda: os.getenv("TIPSTERS_PUBLIC", "").lower() == "true")
     smtp_host: str = field(default_factory=lambda: os.getenv("SMTP_HOST", ""))
     smtp_port: int = field(default_factory=lambda: int(os.getenv("SMTP_PORT", "587")))
     smtp_user: str = field(default_factory=lambda: os.getenv("SMTP_USER", ""))

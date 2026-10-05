@@ -8,12 +8,12 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Re
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from propdeep import accounts, billing, board, chat, picks
+from propdeep import accounts, billing, board, chat, picks, tipsters
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import Settings, get_settings
 from propdeep.db import Prediction, all_predictions, make_session_factory, publish
-from propdeep.mailer import send_login_link
+from propdeep.mailer import send_login_link, send_trial_reminder
 from propdeep.narrative import template_report, write_report
 from propdeep.pipeline import Analyzer, scan_day
 from propdeep.track_record import settle, summary
@@ -285,7 +285,7 @@ def me(user=Depends(require_user)):
 @app.delete("/me")
 def delete_me(user=Depends(require_user)):
     """Borra la cuenta (RGPD). Con una suscripción activa, primero hay que cancelarla."""
-    if accounts.is_subscriber(user) and not user.cancel_at_period_end:
+    if accounts.has_subscription(user) and not user.cancel_at_period_end:
         raise HTTPException(409, "Cancela antes la suscripción desde «Gestionar suscripción».")
     with session_factory()() as session:
         accounts.delete_user(session, session.merge(user))
@@ -295,19 +295,57 @@ def delete_me(user=Depends(require_user)):
 # --- Suscripción con Stripe ---------------------------------------------------------------
 
 class CheckoutRequest(BaseModel):
-    plan: str = Field(pattern="^(monthly|yearly)$")
+    plan: str = Field(pattern="^(monthly|yearly|pro|pass)$")
+
+
+def _prices(s: Settings) -> dict[str, str]:
+    """Plan -> id de precio en Stripe, solo los configurados."""
+    prices = {"monthly": s.stripe_price_monthly, "yearly": s.stripe_price_yearly,
+              "pro": s.stripe_price_pro, "pass": s.stripe_price_pass}
+    return {plan: price for plan, price in prices.items() if price}
+
+
+@app.get("/billing/plans")
+def billing_plans():
+    """Qué planes se pueden contratar ahora (los que tienen precio en Stripe)."""
+    s = settings()
+    return {"plans": sorted(_prices(s)) if s.stripe_secret_key else []}
 
 
 @app.post("/billing/checkout")
 def checkout(req: CheckoutRequest, user=Depends(require_user)):
     s = settings()
-    price = s.stripe_price_monthly if req.plan == "monthly" else s.stripe_price_yearly
+    price = _prices(s).get(req.plan)
     if not (s.stripe_secret_key and price):
-        raise HTTPException(503, "La suscripción todavía no está activada")
-    if accounts.is_subscriber(user):
+        raise HTTPException(503, "Este plan todavía no está activado")
+    # Con un pase se puede pasar a suscripción (o comprar otro pase); con suscripción, no.
+    if accounts.has_subscription(user):
         raise HTTPException(409, "Ya tienes una suscripción activa")
+    if user.subscription_status == "paused":
+        raise HTTPException(409, "Tu suscripción está en pausa: reanúdala desde Mi cuenta")
     url = billing.create_checkout(user, req.plan, secret_key=s.stripe_secret_key, price_id=price, web_url=s.web_url)
     return {"url": url}
+
+
+@app.post("/billing/pause")
+def pause_subscription(user=Depends(require_user)):
+    """Pausa un mes los cobros en vez de cancelar (el botón de cancelar sigue en el portal)."""
+    s = settings()
+    if not (s.stripe_secret_key and user.stripe_subscription_id):
+        raise HTTPException(404, "No hay ninguna suscripción que pausar")
+    if user.subscription_status != "active" or user.cancel_at_period_end:
+        raise HTTPException(409, "Solo se puede pausar una suscripción activa (no en la prueba gratis)")
+    resumes = billing.pause(user, secret_key=s.stripe_secret_key)
+    return {"ok": True, "resumes_at": resumes.isoformat()}
+
+
+@app.post("/billing/resume")
+def resume_subscription(user=Depends(require_user)):
+    s = settings()
+    if not (s.stripe_secret_key and user.stripe_subscription_id) or user.subscription_status != "paused":
+        raise HTTPException(409, "Tu suscripción no está en pausa")
+    billing.resume(user, secret_key=s.stripe_secret_key)
+    return {"ok": True}
 
 
 @app.post("/billing/portal")
@@ -327,8 +365,9 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(defaul
         event = billing.parse_webhook(await request.body(), stripe_signature, secret)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    plans_by_price = {price: plan for plan, price in _prices(settings()).items() if plan != "pass"}
     with session_factory()() as session:
-        billing.apply_event(session, event)
+        billing.apply_event(session, event, plans_by_price)
     return {"received": True}
 
 
@@ -402,7 +441,32 @@ def build_board(game_date: date, max_events: int | None = None, an: Analyzer = D
 
     with session_factory()() as session:
         published = board.publish_board(session, results, game_date, settings().free_lines_per_day, report)
-        return {"published": len(published), "free": sum(1 for p in published if p.free)}
+        out = {"published": len(published), "free": sum(1 for p in published if p.free)}
+    # Se publica la jornada una vez al día: aprovechamos para mandar los avisos de la prueba.
+    out["trial_reminders"] = trial_reminders()["sent"]
+    return out
+
+
+@app.post("/admin/trial-reminders", dependencies=[Depends(require_admin)])
+def trial_reminders():
+    """Correo del día 5 de la prueba: cuándo se cobra y cómo cancelar. Uno por cuenta."""
+    s = settings()
+    sent = 0
+    with session_factory()() as session:
+        for user in accounts.trials_to_remind(session):
+            since = accounts._aware(user.trial_started_at)
+            lines = [p for p in board.board_lines(session) if accounts._aware(p.published_at) >= since]
+            ends = accounts._aware(user.current_period_end)
+            ok = send_trial_reminder(
+                s, user.email, plan=user.plan,
+                ends=ends.strftime("%d/%m/%Y") if ends else "final de la semana",
+                lines=len(lines), games=len({p.event_id for p in lines}),
+            )
+            if ok:
+                user.trial_reminder_sent = True
+                sent += 1
+        session.commit()
+    return {"sent": sent}
 
 
 # --- Ejemplo de mis picks con ayuda de la página ------------------------------------------
@@ -472,6 +536,74 @@ def settle_pick(pick_id: int, req: SettleRequest):
             raise HTTPException(409, str(exc)) from exc
 
 
+# --- Auditoría de tipsters ----------------------------------------------------------------
+
+TIPSTERS_NOTE = ("Picks publicados en abierto por cada tipster antes del partido, registrados todos los que "
+                 "vimos con el enlace a su publicación. Se cuenta 1 unidad si el tipster no indica otra cosa.")
+
+
+class TipsterRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    url: str = Field(pattern="^https?://", max_length=300)
+
+
+class TipsterPickRequest(BaseModel):
+    posted_at: datetime
+    event_start: datetime
+    event: str = Field(min_length=1, max_length=160)
+    selection: str = Field(min_length=1, max_length=200)
+    odds: float = Field(gt=1.0, le=1000)
+    stake: float = Field(default=1.0, gt=0, le=100)
+    evidence_url: str = Field(max_length=500)
+
+
+class TipsterSettleRequest(BaseModel):
+    result: str = Field(pattern="^(won|lost|push|void)$")
+
+
+@app.get("/tipsters")
+def list_tipsters(user=Depends(current_user)):
+    """Público solo con TIPSTERS_PUBLIC=true; antes, solo el autor."""
+    admin = _is_admin(user)
+    if not (settings().tipsters_public or admin):
+        raise HTTPException(404, "No disponible")
+    with session_factory()() as session:
+        return {"tipsters": tipsters.report(session), "public": settings().tipsters_public,
+                "admin": admin, "note": TIPSTERS_NOTE, "disclaimer": DISCLAIMER}
+
+
+@app.post("/tipsters", status_code=201, dependencies=[Depends(require_pick_admin)])
+def create_tipster(req: TipsterRequest):
+    with session_factory()() as session:
+        try:
+            t = tipsters.add_tipster(session, req.name, req.url)
+        except tipsters.TipsterError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return {"id": t.id, "name": t.name, "url": t.url}
+
+
+@app.post("/tipsters/{tipster_id}/picks", status_code=201, dependencies=[Depends(require_pick_admin)])
+def create_tipster_pick(tipster_id: int, req: TipsterPickRequest):
+    with session_factory()() as session:
+        try:
+            return tipsters.public_pick(tipsters.add_pick(session, tipster_id, req.model_dump()))
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except tipsters.TipsterError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/tipster-picks/{pick_id}/settle", dependencies=[Depends(require_pick_admin)])
+def settle_tipster_pick(pick_id: int, req: TipsterSettleRequest):
+    with session_factory()() as session:
+        try:
+            return tipsters.public_pick(tipsters.settle(session, pick_id, req.result))
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except tipsters.TipsterError as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+
 # --- Chat en español sobre los datos del día ----------------------------------------------
 
 class ChatMessage(BaseModel):
@@ -489,12 +621,22 @@ def _chat_user(user=Depends(require_user)):
     return user
 
 
+def _chat_limit(user) -> int:
+    """Con plan Pro en marcha, el chat completo es del Pro (y del autor); el resto, el básico."""
+    s = settings()
+    if not s.stripe_price_pro or _is_admin(user) or (user.plan == "pro" and accounts.has_subscription(user)):
+        return s.chat_messages_per_day
+    return s.chat_messages_per_day_basic
+
+
 @app.get("/chat")
 def chat_status(user=Depends(_chat_user)):
-    limit = settings().chat_messages_per_day
+    limit = _chat_limit(user)
+    s = settings()
     with session_factory()() as session:
         return {"enabled": claude_client() is not None, "limit": limit,
-                "remaining": chat.remaining(session, user.id, limit)}
+                "remaining": chat.remaining(session, user.id, limit),
+                "pro_limit": s.chat_messages_per_day if s.stripe_price_pro and limit < s.chat_messages_per_day else None}
 
 
 @app.post("/chat")
@@ -506,11 +648,14 @@ def chat_message(req: ChatRequest, user=Depends(_chat_user)):
     if client is None:
         raise HTTPException(503, "El chat todavía no está activado")
     s = settings()
+    limit = _chat_limit(user)
     with session_factory()() as session:
         try:
-            left = chat.take_message(session, user.id, s.chat_messages_per_day)
+            left = chat.take_message(session, user.id, limit)
         except chat.LimitReached:
-            raise HTTPException(429, f"Has llegado a los {s.chat_messages_per_day} mensajes de hoy. Mañana más.") from None
+            more = (f" Con el plan Pro tienes {s.chat_messages_per_day} al día."
+                    if limit < s.chat_messages_per_day else "")
+            raise HTTPException(429, f"Has llegado a los {limit} mensajes de hoy. Mañana más.{more}") from None
         try:
             reply = chat.answer(session, [m.model_dump() for m in req.messages], client,
                                 s.chat_model or s.anthropic_model, s.chat_effort)

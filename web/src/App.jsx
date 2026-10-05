@@ -12,6 +12,8 @@ import Home from './pages/Home'
 import MisPicks from './pages/MisPicks'
 import NotFound from './pages/NotFound'
 import Privacidad from './pages/Privacidad'
+import Tipsters from './pages/Tipsters'
+import DatoDelDia from './pages/zona/DatoDelDia'
 import Chat from './pages/zona/Chat'
 import Cuenta from './pages/zona/Cuenta'
 import Entrar from './pages/zona/Entrar'
@@ -22,7 +24,7 @@ import { CuentaProvider } from './lib/cuenta'
 import useReveal from './lib/useReveal'
 
 // Zona de partidos y cuenta: sin campo de tiros ni reloj, para leer datos sin ruido.
-const ZONA = ['/partidos', '/chat', '/entrar', '/cuenta', '/mis-picks']
+const ZONA = ['/partidos', '/chat', '/entrar', '/cuenta', '/mis-picks', '/tipsters', '/dato-del-dia']
 const enZona = (ruta) => ZONA.some((z) => ruta === z || ruta.startsWith(`${z}/`))
 
 function ScrollToTop() {
@@ -51,6 +53,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/mis-picks" element={<MisPicks />} />
+          <Route path="/tipsters" element={<Tipsters />} />
+          <Route path="/dato-del-dia" element={<DatoDelDia />} />
           <Route path="/historial" element={<Navigate to="/mis-picks" replace />} />
           <Route path="/partidos" element={<Partidos />} />
           <Route path="/partidos/:eventId" element={<Partido />} />

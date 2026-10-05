@@ -98,7 +98,7 @@ def _subscribe(api, headers, status="trialing"):
 def test_board_publishes_every_line_once_with_free_quota(api):
     r = api.c.post(f"/admin/board?game_date={DAY}", headers=ADMIN).json()
     # Una línea principal por jugador y mercado (las de cada casa van dentro).
-    assert r == {"published": 4, "free": 1}
+    assert r == {"published": 4, "free": 1, "trial_reminders": 0}
     # Repetirlo no duplica nada: lo publicado no se toca.
     assert api.c.post(f"/admin/board?game_date={DAY}", headers=ADMIN).json()["published"] == 0
 
