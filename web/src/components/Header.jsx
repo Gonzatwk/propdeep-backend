@@ -2,18 +2,18 @@ import { NavLink } from 'react-router-dom'
 import Cta from './Cta'
 import Logo from './Logo'
 
-const link = 'px-2.5 py-1.5 text-sm font-semibold text-on-dark-muted transition-colors hover:text-on-dark'
+const link = 'px-2.5 py-1.5 text-sm font-semibold text-muted transition-colors hover:text-gold'
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-40 bg-cobalt text-on-dark">
+    <header className="sticky top-0 z-40 border-b border-line bg-black/80 text-white backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo />
         <nav aria-label="Principal" className="flex items-center gap-1">
           <a href="/#como-funciona" className={`${link} hidden md:inline-block`}>Cómo funciona</a>
-          <NavLink to="/historial" className={({ isActive }) => `${link} ${isActive ? 'text-on-dark underline decoration-acid decoration-2 underline-offset-[6px]' : ''}`}>Historial</NavLink>
+          <NavLink to="/historial" className={({ isActive }) => `${link} ${isActive ? 'text-white underline decoration-gold decoration-2 underline-offset-[6px]' : ''}`}>Historial</NavLink>
           <a href="/#precio" className={`${link} hidden sm:inline-block`}>Precio</a>
-          <span className="tnum mx-1.5 border-2 border-on-dark px-1.5 py-0.5 text-xs font-bold" title="Solo mayores de 18 años">+18</span>
+          <span className="tnum mx-1.5 border-2 border-white px-1.5 py-0.5 text-xs font-bold" title="Solo mayores de 18 años">+18</span>
           <Cta size="sm" className="ml-1 hidden sm:inline-flex">Reservar</Cta>
         </nav>
       </div>

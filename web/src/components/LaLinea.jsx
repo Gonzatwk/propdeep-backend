@@ -1,5 +1,4 @@
 import { useId, useState } from 'react'
-import { hexPoints } from '../lib/hex'
 import { fmtNum } from '../format'
 
 // Jugadores y partidos ficticios, inventados solo para explicar la idea.
@@ -31,7 +30,7 @@ const JUGADORES = [
 ]
 
 const R = 9
-const COL = R * Math.sqrt(3) + 1.5
+const COL = R * 2 + 1.5
 const pct = (x) => `${Math.round(x * 100)} %`
 
 function Grafico({ jugador, linea }) {
@@ -47,7 +46,7 @@ function Grafico({ jugador, linea }) {
   const huecos = Math.max(max - min + 1, 24)
   const margen = Math.floor((huecos - (max - min + 1)) / 2)
   const ancho = huecos * COL
-  const base = altoMax * R * 1.62 + 30
+  const base = altoMax * (R * 2 + 1.5) + 26
   const alto = base + 22
   const xDe = (v) => (v - min + margen) * COL + COL / 2
   const paso = max - min > 14 ? 5 : 2
@@ -59,22 +58,26 @@ function Grafico({ jugador, linea }) {
 
   return (
     <svg viewBox={`0 0 ${ancho} ${alto}`} className="w-full" role="img" aria-label={`${jugador.stat} en 30 partidos: ${encima} por encima de ${fmtNum(linea)}.`}>
-      <line x1="0" x2={ancho} y1={base} y2={base} stroke="var(--cobalt-deep)" strokeWidth="1.5" />
+      <line x1="0" x2={ancho} y1={base} y2={base} stroke="var(--white)" strokeWidth="1.5" />
       {hexes.map(({ p, n }) => (
-        <polygon
+        <circle
           key={`${jugador.id}-${p}-${n}`}
           className="bar"
-          points={hexPoints(xDe(p), base - R - 2 - (n - 1) * R * 1.62, R)}
-          fill={p > linea ? 'var(--red)' : 'var(--cobalt)'}
+          cx={xDe(p)}
+          cy={base - R - 2 - (n - 1) * (R * 2 + 1.5)}
+          r={R}
+          fill={p > linea ? 'var(--gold)' : 'var(--black-3)'}
+          stroke={p > linea ? 'var(--gold)' : 'var(--grey)'}
+          strokeWidth="1"
         />
       ))}
       {marcas.map((v) => (
         <text key={v} x={xDe(v)} y={alto - 4} textAnchor="middle" fontSize="11" fill="var(--muted)">{v}</text>
       ))}
       <g style={{ transform: `translateX(${xDe(linea)}px)`, transition: 'transform 260ms var(--ease-snap)' }}>
-        <line x1="0" x2="0" y1="18" y2={base} stroke="var(--cobalt-deep)" strokeWidth="2.5" strokeDasharray="5 4" />
-        <rect x="-22" y="0" width="44" height="18" fill="var(--cobalt-deep)" />
-        <text x="0" y="13" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--on-dark)">{fmtNum(linea)}</text>
+        <line x1="0" x2="0" y1="18" y2={base} stroke="var(--white)" strokeWidth="2.5" strokeDasharray="5 4" />
+        <rect x="-22" y="0" width="44" height="18" fill="var(--white)" />
+        <text x="0" y="13" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--black)">{fmtNum(linea)}</text>
       </g>
     </svg>
   )
@@ -105,20 +108,20 @@ export default function LaLinea() {
             type="button"
             aria-selected={j.id === actual}
             onClick={() => setActual(j.id)}
-            className={`btn h-11 px-4 text-lg ${j.id === actual ? 'btn-cobalt [--sweep:var(--cobalt)]' : 'btn-ghost text-cobalt'}`}
+            className={`btn h-11 px-4 text-lg ${j.id === actual ? 'btn-gold [--sweep:var(--gold)]' : 'btn-ghost text-white'}`}
           >
             {j.nombre}
           </button>
         ))}
       </div>
 
-      <div className="mt-6 grid gap-x-12 gap-y-8 border-2 border-cobalt-deep bg-paper p-5 sm:p-8 lg:grid-cols-[1.25fr_1fr]">
+      <div className="mt-6 grid gap-x-12 gap-y-8 panel border-2 border-white/30 p-5 sm:p-8 lg:grid-cols-[1.25fr_1fr]">
         <figure className="lg:row-span-2">
           <Grafico jugador={jugador} linea={linea} />
           <figcaption className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted">
-            <span>Cada hexágono es un partido. Últimos 30, {jugador.stat} por partido.</span>
-            <span className="inline-flex items-center gap-1.5"><span className="size-3 bg-red" /> Por encima</span>
-            <span className="inline-flex items-center gap-1.5"><span className="size-3 bg-cobalt" /> Por debajo</span>
+            <span>Cada círculo es un partido. Últimos 30, {jugador.stat} por partido.</span>
+            <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded-full bg-gold" /> Por encima</span>
+            <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded-full border border-grey bg-black-3" /> Por debajo</span>
           </figcaption>
         </figure>
 
@@ -145,7 +148,7 @@ export default function LaLinea() {
           </li>
         </ol>
 
-        <div aria-live="polite" className={`relative overflow-hidden p-5 transition-colors duration-300 ${hayVentaja ? 'bg-red text-on-dark' : 'bg-cobalt-deep text-on-dark'}`}>
+        <div aria-live="polite" className={`relative overflow-hidden p-5 transition-colors duration-300 ${hayVentaja ? 'bg-gold text-black' : 'border-2 border-white text-white'}`}>
           <p className="display text-[2.4rem] leading-none">{hayVentaja ? 'Hay ventaja' : 'Sin ventaja'}</p>
           <p className="mt-2 leading-snug">
             {hayVentaja

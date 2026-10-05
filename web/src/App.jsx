@@ -2,7 +2,9 @@ import { useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import Anuncio from './components/Anuncio'
 import Footer from './components/Footer'
+import FondoPista from './components/FondoPista'
 import Header from './components/Header'
+import RelojPosesion from './components/RelojPosesion'
 import AvisoLegal from './pages/AvisoLegal'
 import Cookies from './pages/Cookies'
 import HistorialPage from './pages/HistorialPage'
@@ -24,13 +26,14 @@ function ScrollToTop() {
 export default function App() {
   return (
     <div className="flex min-h-dvh flex-col">
-      <a href="#contenido" className="sr-only z-50 bg-acid px-4 py-2 font-semibold text-cobalt-deep focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
+      <a href="#contenido" className="sr-only z-50 bg-gold px-4 py-2 font-semibold text-black focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
         Saltar al contenido
       </a>
       <ScrollToTop />
+      <FondoPista />
       <Anuncio />
       <Header />
-      <main id="contenido" className="flex-1">
+      <main id="contenido" className="relative z-10 flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/historial" element={<HistorialPage />} />
@@ -41,6 +44,7 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
+      <RelojPosesion />
     </div>
   )
 }
