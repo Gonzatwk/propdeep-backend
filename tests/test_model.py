@@ -103,3 +103,27 @@ def test_parse_props_pairs_and_picks_lowest_margin():
     assert len(props) == 1
     assert props[0].bookmaker == "bookB"
     assert props[0].over_odds == 1.92
+
+
+def test_minutes_adjustment_is_capped_and_ignores_last_season():
+    # 1 partido esta temporada con 3 minutos y 4 de la anterior con 30: antes daba más de 50 puntos.
+    values = [2.0, 20.0, 22.0, 18.0, 21.0]
+    mins = [3.0, 30.0, 30.0, 30.0, 30.0]
+    t = compute_trends(values, mins, 11.5, season_games=1)
+    assert t.minutes_last5 is None
+    from propdeep.model import project
+
+    assert project("pts", t, Context()) < 20
+
+    # Con temporada suficiente, un salto de minutos sube la proyección como mucho un 15 %.
+    values = [20.0] * 10
+    mins = [40.0] * 5 + [10.0] * 5
+    t = compute_trends(values, mins, 19.5, season_games=10)
+    assert project("pts", t, Context()) == pytest.approx(20.0 * 1.15)
+
+
+def test_prob_over_accounts_for_right_skew():
+    # Proyección 20 con mucha dispersión: pasar de 19,5 es algo menos probable que el 50 % de la normal.
+    assert prob_over("pts", 20.0, 8.0, 19.5) < 0.5
+    assert prob_over("reb", 8.0, 3.0, 7.5) == pytest.approx(prob_over("reb", 8.0, 3.0, 7.0))
+    assert 0 < prob_over("ast", 2.0, 1.0, 1.5) < 1

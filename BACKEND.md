@@ -74,3 +74,23 @@ python -m scripts.informes_ejemplo 2026-10-21
 
 - **Balldontlie ALL-STAR** (9,99 $/mes): necesario para `/stats` y `/player_injuries`.
 - **The Odds API**: cada partido cuesta (mercados × regiones) créditos; 4 mercados en `eu` = 4.
+
+## Backtest
+
+`scripts/backtest.py` repasa una temporada pasada (por defecto la 2025-26) con la misma función
+`analyze` de producción y solo con datos previos a cada partido. Descarga la temporada de Balldontlie
+una vez (unos 10-15 minutos por el límite de 60 peticiones/minuto) y la guarda en `backtest_cache/`.
+
+```bash
+python -m scripts.backtest --lineas proxy                      # gratis: calibración del modelo
+python -m scripts.backtest --lineas odds-api --stats pts --estimar   # cuántos créditos haría falta
+python -m scripts.backtest --lineas odds-api --stats pts --max-creditos 19000
+```
+
+- `proxy` usa una línea inventada (media de los 10 previos): dice si las probabilidades están bien
+  calibradas, no si se gana al mercado.
+- `odds-api` usa cuotas históricas reales (solo planes de pago de The Odds API: 10 créditos por
+  mercado y región y partido). Todo lo descargado queda en caché y no se vuelve a pagar.
+- `--todas-casas` (con `odds-api`) guarda la línea principal de cada casa en `backtest_out/odds-api-casas/`,
+  para comparar casas y buscar la mejor cuota. Sale de la caché: no vuelve a pagar lo descargado.
+- Resultados en `backtest_out/<modo>/resumen.json` y `lineas.csv`.

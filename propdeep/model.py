@@ -18,6 +18,11 @@ MIN_SD = {"pts": 4.0, "reb": 2.0, "ast": 1.8, "fg3m": 1.0}
 # Ajuste por contexto acotado: el contexto matiza, no manda.
 MAX_CONTEXT_ADJ = 0.05
 
+# El ajuste por minutos solo se usa con suficientes partidos de la temporada y con tope: sin él,
+# un jugador con 3 minutos este año y 30 el anterior salía proyectado a más de 100 puntos.
+MIN_SEASON_GAMES_FOR_MINUTES = 5
+MAX_MINUTES_ADJ = 0.15
+
 
 @dataclass
 class Trends:
@@ -75,6 +80,8 @@ def compute_trends(values: list[float], minutes: list[float], line: float, seaso
         return round(mean(xs), 2) if xs else None
 
     last10 = values[:10]
+    season_minutes = minutes[:season_games]
+    use_minutes = season_games >= MIN_SEASON_GAMES_FOR_MINUTES
     return Trends(
         games=len(values),
         last5=avg(values[:5]),
@@ -82,8 +89,9 @@ def compute_trends(values: list[float], minutes: list[float], line: float, seaso
         last20=avg(values[:20]),
         season=avg(values[:season_games]) if season_games else None,
         sd=round(pstdev(values[:20]), 2) if len(values) >= 2 else 0.0,
-        minutes_last5=avg(minutes[:5]),
-        minutes_season=avg(minutes[:season_games]) if season_games else avg(minutes),
+        # Solo minutos de esta temporada: mezclar la anterior daba proporciones absurdas.
+        minutes_last5=avg(season_minutes[:5]) if use_minutes else None,
+        minutes_season=avg(season_minutes) if season_games else avg(minutes),
         hit_rate_last10=round(sum(v > line for v in last10) / len(last10), 3) if last10 else None,
         recent_values=values[:10],
     )
@@ -97,10 +105,10 @@ def project(stat: str, trends: Trends, context: Context) -> float:
         raise ValueError("Sin partidos suficientes para proyectar")
     base = sum(v * w for v, w in used) / sum(w for _, w in used)
 
-    # Si su rol ha cambiado (más o menos minutos), lo reflejamos a medias.
+    # Si su rol ha cambiado (más o menos minutos), lo reflejamos a medias y con tope.
     if trends.minutes_last5 and trends.minutes_season:
         ratio = trends.minutes_last5 / trends.minutes_season
-        base *= 1 + (ratio - 1) * 0.5
+        base *= 1 + max(-MAX_MINUTES_ADJ, min(MAX_MINUTES_ADJ, (ratio - 1) * 0.5))
 
     adj = (context.opponent_factor - 1) + (-0.02 if context.back_to_back else 0.0)
     adj = max(-MAX_CONTEXT_ADJ, min(MAX_CONTEXT_ADJ, adj))
@@ -108,11 +116,23 @@ def project(stat: str, trends: Trends, context: Context) -> float:
 
 
 def prob_over(stat: str, projection: float, sd: float, line: float) -> float:
-    if stat == "fg3m":
-        # Los triples son conteos pequeños: Poisson se ajusta mejor que la normal.
-        return 1 - _poisson_cdf(math.floor(line), projection)
-    sigma = max(sd, MIN_SD.get(stat, 2.0))
-    return 1 - _normal_cdf((line - projection) / sigma)
+    """P(estadística > línea) con binomial negativa (Poisson si no hay sobredispersión).
+
+    Puntos, rebotes y asistencias tienen cola a la derecha: la mediana queda por debajo de la
+    media. Con una normal simétrica el modelo daba unos 5 puntos de más al over (backtest 2025-26).
+    """
+    mu = max(projection, 0.05)
+    var = max(sd, MIN_SD.get(stat, 2.0)) ** 2
+    k = math.floor(line)
+    if k < 0:
+        return 1.0
+    if var <= mu * 1.0001:
+        return max(0.0, min(1.0, 1 - _poisson_cdf(k, mu)))
+    r = mu * mu / (var - mu)
+    p = r / (r + mu)
+    cdf = sum(math.exp(math.lgamma(i + r) - math.lgamma(r) - math.lgamma(i + 1)
+                       + r * math.log(p) + i * math.log(1 - p)) for i in range(k + 1))
+    return max(0.0, min(1.0, 1 - cdf))
 
 
 def devig(over_odds: float, under_odds: float) -> float:
@@ -192,10 +212,6 @@ def _confidence(edge: float, trends: Trends) -> str:
     if edge >= 0.04 and trends.games >= 10:
         return "media"
     return "baja"
-
-
-def _normal_cdf(z: float) -> float:
-    return 0.5 * (1 + math.erf(z / math.sqrt(2)))
 
 
 def _poisson_cdf(k: int, lam: float) -> float:
