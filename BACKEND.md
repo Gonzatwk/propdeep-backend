@@ -46,7 +46,12 @@ seguir midiéndolo (`/admin/predictions`).
 | GET / POST | `/chat` | Estado del chat (mensajes que quedan hoy) / pregunta al chat (suscriptores) |
 | POST | `/auth/login` · `/auth/verify` · `/auth/logout` | Acceso por enlace mágico, solo con el correo |
 | GET / DELETE | `/me` | Estado de la cuenta / borrar la cuenta |
-| POST | `/billing/checkout` · `/billing/portal` | Stripe Checkout (prueba de 7 días) y portal de cliente |
+| GET | `/billing/plans` | Planes que se pueden contratar (los que tienen precio en Stripe) |
+| POST | `/billing/checkout` · `/billing/portal` | Stripe Checkout (mensual, anual, Pro o pase) y portal de cliente |
+| POST | `/billing/pause` · `/billing/resume` | Pausar los cobros un mes en vez de cancelar, o reanudar |
+| POST | `/admin/trial-reminders` | Correo del día 5 de la prueba (también lo lanza `/admin/board`) |
+| GET | `/tipsters` | Auditoría de tipsters (pública solo con `TIPSTERS_PUBLIC=true`; antes, solo el autor) |
+| POST | `/tipsters` · `/tipsters/{id}/picks` · `/tipster-picks/{id}/settle` | Alta de tipster, registro de un pick con su prueba y resultado (autor) |
 | POST | `/stripe/webhook` | Único sitio donde se da o quita el acceso |
 | POST | `/waitlist` | Correos del formulario de aviso de la landing |
 
@@ -89,6 +94,15 @@ seguir midiéndolo (`/admin/predictions`).
    `customer.subscription.created`, `customer.subscription.updated` y
    `customer.subscription.deleted`. Su "signing secret" va en `STRIPE_WEBHOOK_SECRET`.
 4. Activa el portal de cliente (Settings > Billing > Customer portal) para que puedan cancelar.
+   Añade en el portal los productos mensual, anual y Pro para que se pueda cambiar de plan.
+5. Opcionales: precio Pro (25 € al mes, recurrente) en `STRIPE_PRICE_PRO` y pase de 7 días (5 €,
+   **pago único**) en `STRIPE_PRICE_PASS`. Sin ellos, esos planes no se ofrecen. Con el Pro activo,
+   el chat completo (`CHAT_MESSAGES_PER_DAY`) es del Pro y el resto tiene `CHAT_MESSAGES_PER_DAY_BASIC`.
+6. Subida del 1 de enero de 2027: ese día crea un precio mensual nuevo de 19 € y pon su id en
+   `STRIPE_PRICE_MONTHLY`. Las suscripciones que ya existen siguen en su precio de 15 €.
+
+Pausa: `/billing/pause` usa `pause_collection` de Stripe (sin cobro y sin acceso durante 30 días,
+se reanuda sola). Mientras dura, la cuenta queda como `paused`.
 
 Lo publicado no se edita: cada predicción guarda un hash SHA-256 de su contenido.
 
