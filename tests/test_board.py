@@ -35,9 +35,14 @@ class FakeOdds:
         return self.events
 
     def player_props(self, event):
-        mk = lambda market, line, o, u: PropLine(event["id"], event["commence_time"], event["home_team"],
-                                                 event["away_team"], "Luka Doncic", market, line, o, u, "bookB")
-        return [mk("player_points", 27.5, 1.9, 1.9), mk("player_points", 40.5, 1.9, 1.9), mk("player_assists", 7.5, 1.9, 1.9)]
+        mk = lambda market, line, o, u, book: PropLine(event["id"], event["commence_time"], event["home_team"],
+                                                       event["away_team"], "Luka Doncic", market, line, o, u, book)
+        return [
+            mk("player_points", 27.5, 1.95, 1.85, "bookA"),
+            mk("player_points", 27.5, 1.90, 1.90, "bookB"),
+            mk("player_points", 26.5, 1.80, 2.00, "bookC"),
+            mk("player_assists", 7.5, 1.9, 1.9, "bookB"),
+        ]
 
 
 @pytest.fixture
@@ -92,7 +97,8 @@ def _subscribe(api, headers, status="trialing"):
 
 def test_board_publishes_every_line_once_with_free_quota(api):
     r = api.c.post(f"/admin/board?game_date={DAY}", headers=ADMIN).json()
-    assert r == {"published": 6, "free": 1}
+    # Una línea principal por jugador y mercado (las de cada casa van dentro).
+    assert r == {"published": 4, "free": 1}
     # Repetirlo no duplica nada: lo publicado no se toca.
     assert api.c.post(f"/admin/board?game_date={DAY}", headers=ADMIN).json()["published"] == 0
 
@@ -107,16 +113,24 @@ def test_free_visitor_sees_free_line_and_locked_rest(api):
     lines = api.c.get("/board/games/ev1").json()["lines"] + api.c.get("/board/games/ev2").json()["lines"]
     free = [l for l in lines if not l["locked"]]
     locked = [l for l in lines if l["locked"]]
-    assert len(free) == 1 and free[0]["free"] and free[0]["side"] == "over"
-    assert all("side" not in l and "probability" not in l for l in locked)
-    assert api.c.get(f"/board/lines/{free[0]['id']}").status_code == 200
-    assert api.c.get(f"/board/lines/{locked[0]['id']}").status_code == 402
+    assert len(free) == 1 and free[0]["free"] and free[0]["stat"] == "pts" and free[0]["event_id"] == "ev1"
+    assert all("projection" not in l and "hit_rates" not in l for l in locked)
 
-    # El historial lista todas, pero sin veredicto hasta que empiece el partido.
-    hist = {p["id"]: p for p in api.c.get("/predictions").json()}
-    assert len(hist) == 6
-    assert hist[locked[0]["id"]]["hidden"] and "side" not in hist[locked[0]["id"]]
-    assert "hidden" not in hist[free[0]["id"]]
+    # Modo análisis: nada de veredicto, confianza ni ventaja en lo que sale de la API.
+    f = free[0]
+    assert f["line"] == 27.5 and f["books_count"] == 3 and f["projection"] > 27.5
+    assert f["hit_rates"]["last5"] == 1.0 and f["hit_rates"]["last10"] == 1.0
+    assert f["best"]["over"] == {"bookmaker": "bookC", "line": 26.5, "odds": 1.80}
+    assert f["best"]["under"] == {"bookmaker": "bookB", "line": 27.5, "odds": 1.90}
+    detail = api.c.get(f"/board/lines/{f['id']}")
+    assert detail.status_code == 200
+    d = detail.json()
+    assert len(d["books"]) == 3 and d["trends"]["splits"]["home"]["games"] == 0
+    for body in (f, d):
+        for key in ("side", "confidence", "edge", "probability", "prob_over", "expected_value"):
+            assert key not in body
+    assert "ventaja" not in d["report"].lower() and "orientativa" in d["report"]
+    assert api.c.get(f"/board/lines/{locked[0]['id']}").status_code == 402
 
 
 def test_lines_open_to_everyone_once_the_game_starts(api):
@@ -130,7 +144,7 @@ def test_logged_in_without_subscription_is_still_locked(api):
     h = _login(api)
     assert api.c.get("/me", headers=h).json()["subscriber"] is False
     lines = api.c.get("/board/games/ev1", headers=h).json()["lines"]
-    assert sum(l["locked"] for l in lines) >= 2
+    assert sum(l["locked"] for l in lines) >= 1
 
 
 def test_subscriber_by_webhook_unlocks_everything(api):
@@ -187,17 +201,18 @@ def test_checkout_disabled_without_stripe_keys(api):
     assert api.c.post("/billing/checkout", json={"plan": "monthly"}).status_code == 401
 
 
-def test_pick_free_prefers_edge_one_per_game_and_player():
-    a = lambda player, side, edge: SimpleNamespace(player=player, side=side, edge=edge)
+def test_pick_free_points_of_the_top_player_one_per_game():
+    a = lambda player, stat, proj: SimpleNamespace(player=player, stat=stat, projection=proj)
     m = lambda ev, t: {"event_id": ev, "commence_time": t}
     cands = [
-        (a("A", "over", 0.05), m("e1", "1")),
-        (a("B", "under", 0.09), m("e1", "1")),
-        (a("C", None, 0.0), m("e2", "2")),
-        (a("B", "over", 0.07), m("e3", "3")),
-        (a("D", "over", 0.04), m("e3", "3")),
+        (a("A", "pts", 20.0), m("e1", "1")),
+        (a("B", "pts", 28.0), m("e1", "1")),
+        (a("B", "ast", 9.0), m("e1", "1")),
+        (a("C", "reb", 10.0), m("e2", "2")),
+        (a("B", "pts", 30.0), m("e3", "3")),
+        (a("D", "pts", 25.0), m("e3", "3")),
     ]
-    assert board._pick_free(cands, 3) == {1, 4, 2}
+    assert board._pick_free(cands, 3) == {1, 3, 5}
     assert board._pick_free(cands, 0) == set()
 
 

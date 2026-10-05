@@ -5,7 +5,7 @@ import { useCuenta } from '../lib/cuenta'
 import Cta from './Cta'
 import Logo from './Logo'
 
-const link = 'px-2.5 py-1.5 text-sm font-semibold text-muted transition-colors hover:text-gold'
+const link = 'whitespace-nowrap px-2.5 py-1.5 text-sm font-semibold text-muted transition-colors hover:text-gold'
 const activo = ({ isActive }) => `${link} ${isActive ? 'text-white underline decoration-gold decoration-2 underline-offset-[6px]' : ''}`
 
 // Línea dorada bajo la cabecera que avanza con el scroll, con un balón en la punta.
@@ -49,7 +49,7 @@ export default function Header() {
         <nav aria-label="Principal" className="flex items-center gap-1">
           <a href="/#como-funciona" className={`${link} hidden lg:inline-block`}>Cómo funciona</a>
           <NavLink to="/partidos" className={activo}>Partidos</NavLink>
-          <NavLink to="/historial" className={activo}>Historial</NavLink>
+          <NavLink to="/mis-picks" className={activo}>Mis picks</NavLink>
           <a href="/#precio" className={`${link} hidden md:inline-block`}>Precio</a>
           <NavLink to={usuario ? '/cuenta' : '/entrar'} className={activo} aria-label={usuario ? 'Mi cuenta' : 'Entrar'}>
             <UserCircle aria-hidden className="size-5 sm:hidden" />

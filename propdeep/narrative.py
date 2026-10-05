@@ -12,26 +12,37 @@ from .model import STAT_LABELS, Analysis
 
 log = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """Eres el analista de PropDeep, un servicio en español de análisis estadístico \
-de player props de la NBA para apostadores de España y Latinoamérica.
+SYSTEM_PROMPT = """Eres el analista de PropDeep, una herramienta en español de análisis \
+estadístico de player props de la NBA para España y Latinoamérica.
 
-Recibes un JSON con un análisis ya calculado. Escribe el informe para el suscriptor:
+Recibes un JSON con los datos de una línea. Escribe un informe de análisis:
 - 4 a 6 frases en español neutro, claras, sin jerga innecesaria.
-- Cubre, si hay datos: tendencia reciente frente a la línea, minutos y rol, rival y \
-contexto (local/visitante, back-to-back, lesiones), y la comparación entre nuestra \
-probabilidad y la que implica la cuota.
+- Cubre, si hay datos: la proyección frente a la línea, cuántas veces superó la línea \
+(últimos 5, últimos 10, temporada), en casa y fuera, contra este rival, minutos y rol, \
+rival y contexto (back-to-back, lesiones), y si las casas ofrecen líneas distintas.
 - Usa solo los números del JSON. No inventes estadísticas, lesiones ni noticias.
-- Si "side" es null, di claramente que no vemos ventaja y que no recomendamos jugarla.
-- Nunca digas "pick seguro", "fijo", "ganancia garantizada" ni nada parecido. Habla de \
-probabilidades y riesgo.
-- Termina con una frase con el nivel de confianza y su porqué.
+- Es información orientativa, no una recomendación: no digas qué apostar, no hables de \
+"valor", "ventaja", "pick" ni "confianza", y nunca digas "seguro", "fijo" ni \
+"ganancia garantizada". Señala también los datos que van en contra de la tendencia.
 Devuelve solo el texto del informe, sin títulos ni listas."""
 
+# Campos internos del modelo que no salen al público: el backtest no mostró ventaja.
+VERDICT_FIELDS = ("side", "edge", "odds_taken", "expected_value", "confidence",
+                  "prob_over_model", "prob_over_market", "prob_over_final", "reasons")
 
-def write_report(analysis: Analysis, client=None, model: str = "claude-opus-5-5") -> str:
+
+def facts(analysis: Analysis, books: list[dict] | None = None) -> dict:
+    data = {k: v for k, v in analysis.to_dict().items() if k not in VERDICT_FIELDS}
+    if books:
+        data["books"] = books
+    return data
+
+
+def write_report(analysis: Analysis, client=None, model: str = "claude-opus-5-5",
+                 books: list[dict] | None = None) -> str:
     if client is None:
         return template_report(analysis)
-    facts = json.dumps(analysis.to_dict(), ensure_ascii=False, sort_keys=True)
+    payload = json.dumps(facts(analysis, books), ensure_ascii=False, sort_keys=True)
     try:
         response = client.beta.messages.create(
             model=model,
@@ -42,7 +53,7 @@ def write_report(analysis: Analysis, client=None, model: str = "claude-opus-5-5"
             # con el modelo de respaldo que corresponda en la misma llamada.
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
-            messages=[{"role": "user", "content": f"Análisis:\n{facts}"}],
+            messages=[{"role": "user", "content": f"Datos:\n{payload}"}],
         )
     except Exception as exc:  # noqa: BLE001 - el informe nunca debe romper el análisis
         log.warning("Fallo al redactar con Claude, uso plantilla: %s", exc)
@@ -58,28 +69,35 @@ def _n(x: float, digits: int = 1) -> str:
     return f"{round(x, digits):g}".replace(".", ",")
 
 
+def _pct(x: float) -> str:
+    return f"{round(x * 100)} %"
+
+
 def template_report(a: Analysis) -> str:
     label = STAT_LABELS.get(a.stat, a.stat)
     t = a.trends
-    parts = [
-        f"{a.player}: línea de {_n(a.line)} {label}. Proyectamos {_n(a.projection)}.",
-    ]
+    parts = [f"{a.player}: línea de {_n(a.line)} {label}. Nuestra proyección es de {_n(a.projection)}."]
+    rates = [(f"los últimos {min(n, t.games)}", r) for n, r in ((5, t.hit_rate_last5), (10, t.hit_rate_last10)) if r is not None]
+    if t.hit_rate_season is not None and t.season_games >= 5:
+        rates.append((f"los {t.season_games} de esta temporada", t.hit_rate_season))
+    if rates:
+        texto = ", ".join(f"el {_pct(r)} de {w}" for w, r in rates)
+        parts.append(f"Superó la línea en {texto}.")
     if t.last10 is not None:
-        hit = f" y superó la línea en el {round((t.hit_rate_last10 or 0) * 100)} % de ellos" if t.hit_rate_last10 is not None else ""
-        parts.append(f"Promedia {_n(t.last10)} en sus últimos {min(t.games, 10)} partidos{hit}.")
+        parts.append(f"Promedia {_n(t.last10)} en sus últimos {min(t.games, 10)} partidos.")
+    s = t.splits or {}
+    home, away, vs = s.get("home") or {}, s.get("away") or {}, s.get("vs_opponent") or {}
+    if home.get("games") and away.get("games"):
+        parts.append(f"En casa promedia {_n(home['avg'])} y fuera {_n(away['avg'])}.")
     if a.context.opponent:
         where = "en casa" if a.context.home else "fuera" if a.context.home is False else ""
         b2b = ", en back-to-back" if a.context.back_to_back else ""
         parts.append(f"Juega {where} contra {a.context.opponent}{b2b}.".replace("Juega  ", "Juega "))
-    p_over = _n(a.prob_over_final * 100)
-    p_market = _n(a.prob_over_market * 100)
-    parts.append(f"Estimamos un {p_over} % para el más frente al {p_market} % que marca el mercado sin margen.")
-    if a.side is None:
-        parts.extend(a.reasons)
-        parts.append("Sin ventaja: no recomendamos jugar esta prop.")
-    else:
-        parts.append(
-            f"Vemos valor en el {'más' if a.side == 'over' else 'menos'} a cuota {f'{a.odds_taken:.2f}'.replace('.', ',')} "
-            f"(ventaja de {_n(a.edge * 100)} puntos). Confianza {a.confidence}."
-        )
+    if vs.get("games"):
+        n = vs["games"]
+        parts.append(f"Contra este rival promedia {_n(vs['avg'])} en {n} {'partido' if n == 1 else 'partidos'} recientes.")
+    if t.minutes_last5 and t.minutes_season:
+        parts.append(f"Minutos: {_n(t.minutes_last5)} en los últimos 5 frente a {_n(t.minutes_season)} de media.")
+    parts.extend(a.reasons)
+    parts.append("Es información orientativa, no una recomendación de apuesta.")
     return " ".join(parts)

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Anuncio from './components/Anuncio'
 import Cursor from './components/Cursor'
 import Footer from './components/Footer'
@@ -8,8 +8,8 @@ import Header from './components/Header'
 import RelojPosesion from './components/RelojPosesion'
 import AvisoLegal from './pages/AvisoLegal'
 import Cookies from './pages/Cookies'
-import HistorialPage from './pages/HistorialPage'
 import Home from './pages/Home'
+import MisPicks from './pages/MisPicks'
 import NotFound from './pages/NotFound'
 import Privacidad from './pages/Privacidad'
 import Cuenta from './pages/zona/Cuenta'
@@ -21,7 +21,7 @@ import { CuentaProvider } from './lib/cuenta'
 import useReveal from './lib/useReveal'
 
 // Zona de partidos y cuenta: sin campo de tiros ni reloj, para leer datos sin ruido.
-const ZONA = ['/partidos', '/entrar', '/cuenta']
+const ZONA = ['/partidos', '/entrar', '/cuenta', '/mis-picks']
 const enZona = (ruta) => ZONA.some((z) => ruta === z || ruta.startsWith(`${z}/`))
 
 function ScrollToTop() {
@@ -49,7 +49,8 @@ export default function App() {
       <main id="contenido" className="relative z-10 flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/historial" element={<HistorialPage />} />
+          <Route path="/mis-picks" element={<MisPicks />} />
+          <Route path="/historial" element={<Navigate to="/mis-picks" replace />} />
           <Route path="/partidos" element={<Partidos />} />
           <Route path="/partidos/:eventId" element={<Partido />} />
           <Route path="/partidos/:eventId/:lineId" element={<Informe />} />

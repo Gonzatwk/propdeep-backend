@@ -22,6 +22,8 @@ class Settings:
     database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///./propdeep.db"))
     # Protege los endpoints que publican o liquidan predicciones.
     admin_token: str = field(default_factory=lambda: os.getenv("ADMIN_TOKEN", ""))
+    # Correos (separados por comas) que pueden publicar picks desde la web tras entrar.
+    admin_emails: str = field(default_factory=lambda: os.getenv("ADMIN_EMAILS", ""))
     # Temporada en formato Balldontlie: 2026 = temporada 2026-27.
     current_season: int = field(default_factory=lambda: int(os.getenv("NBA_SEASON", "2026")))
     # Ventaja mínima (en puntos de probabilidad) para considerar una jugada.
@@ -31,7 +33,7 @@ class Settings:
     cors_origins: str = field(default_factory=lambda: os.getenv("CORS_ORIGINS", "*"))
     # Dirección pública de la web: para el enlace de acceso y las vueltas de Stripe.
     web_url: str = field(default_factory=lambda: os.getenv("WEB_URL", "https://propdeep.pages.dev").rstrip("/"))
-    # Líneas por jornada que se ven gratis con su veredicto; el resto, con suscripción.
+    # Líneas por jornada que se ven gratis con su análisis; el resto, con suscripción.
     free_lines_per_day: int = field(default_factory=lambda: int(os.getenv("FREE_LINES_PER_DAY", "3")))
     stripe_secret_key: str = field(default_factory=lambda: os.getenv("STRIPE_SECRET_KEY", ""))
     stripe_webhook_secret: str = field(default_factory=lambda: os.getenv("STRIPE_WEBHOOK_SECRET", ""))

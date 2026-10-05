@@ -59,9 +59,12 @@ def test_publish_settle_and_track_record(client):
     settled = c.post("/admin/settle", headers=h).json()["settled"]
     assert settled[0]["status"] == "won" and settled[0]["actual"] == 31.0
 
-    history = c.get("/predictions").json()
+    # Los veredictos del modelo ya no son públicos: solo para medirlo internamente.
+    assert c.get("/predictions").status_code == 404
+    assert c.get("/admin/predictions").status_code == 401
+    history = c.get("/admin/predictions", headers=h).json()
     assert len(history) == 1
-    tr = c.get("/track-record").json()
+    tr = c.get("/admin/track-record", headers=h).json()
     assert tr["overall"]["won"] == 1
     assert tr["overall"]["profit_units"] == pytest.approx(0.9)
 

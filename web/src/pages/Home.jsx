@@ -13,13 +13,14 @@ const preguntas = [
   ['Tendencias', 'Últimos 5, 10 y 20 partidos, minutos y uso. ¿El jugador está por encima o por debajo de su media?'],
   ['Matchup', 'Cómo defiende el rival esa estadística y en qué posición. Ritmo de juego esperado.'],
   ['Contexto', 'Back-to-back, viajes, bajas del equipo y del rival, riesgo de paliza.'],
-  ['Línea del mercado', 'Nuestra probabilidad estimada frente a la que implica la cuota. La diferencia es la ventaja, si existe.'],
-  ['Confianza', 'Alta, media o baja, explicada en una frase. Sin ventaja, el análisis lo dice.'],
+  ['La línea', 'Cuántas veces la superó en los últimos 5 y 10 partidos y en la temporada, en casa, fuera y contra ese rival.'],
+  ['Las casas', 'La misma prop en varias casas, con su línea y su cuota, para que veas dónde está mejor antes de decidir.'],
 ]
 
 const faqs = [
-  ['¿Me vais a decir a qué apostar?', 'No. Te damos un análisis estadístico y nuestra estimación de probabilidad. La decisión y el riesgo son tuyos.'],
-  ['¿Garantizáis ganancias?', 'No, y desconfía de quien lo haga. Apostar siempre implica riesgo de perder dinero. Por eso publicamos todo el historial.'],
+  ['¿Me vais a decir a qué apostar?', 'No. Te damos datos y análisis de cada línea para que decidas tú. No damos picks ni recomendaciones: la decisión y el riesgo son tuyos.'],
+  ['¿Garantizáis ganancias?', 'No, y desconfía de quien lo haga. Es información orientativa. Apostar siempre implica riesgo de perder dinero y a largo plazo es muy difícil ganar a la casa.'],
+  ['¿Qué es «Ejemplo de mis picks»?', 'Los picks del fundador hechos con ayuda de la página. Se publican antes del partido, no se editan y salen todos, también los fallados. Son suyos, no del modelo, y no garantizan nada.'],
   ['¿Qué props cubrís?', 'Puntos, rebotes, asistencias y triples de los partidos de la NBA, empezando por los de más interés cada día.'],
   ['¿Cuándo se publican los análisis?', 'Antes de cada jornada, a una hora cómoda para España y Latinoamérica.'],
   ['¿Trabajáis con casas de apuestas?', 'No. No tenemos afiliación ni patrocinio de ningún operador.'],
@@ -27,7 +28,7 @@ const faqs = [
   ['¿Por qué no puedo pagar ya?', 'Porque no cobramos por algo que aún no puedes usar. Déjanos tu correo y te avisamos el día que abra.'],
 ]
 
-const anatomia = ['Jugador y partido', 'Prop y línea', 'Cuota', 'Probabilidad implícita', 'Probabilidad estimada', 'Ventaja', 'Confianza', 'Tres razones']
+const anatomia = ['Jugador y partido', 'Prop y línea', 'Proyección', 'Veces que superó la línea', 'Casa, fuera y rival', 'Minutos y contexto', 'Líneas de cada casa', 'Informe en español']
 
 function Palabras({ texto, desde = 0 }) {
   return texto.split(' ').map((w, i) => (
@@ -63,7 +64,7 @@ function Hero() {
             </span>
           </h1>
           <p className="rise mt-7 max-w-[36rem] text-lg leading-relaxed text-muted" style={{ '--i': 8 }}>
-            Análisis estadístico en español de cada prop: tendencias, matchup, contexto y comparación con la línea del mercado. Y cuando no hay ventaja, te lo decimos.
+            Análisis estadístico en español de cada prop: tendencias, cuántas veces superó la línea, rival, contexto y las líneas de cada casa comparadas. Información para decidir tú, sin promesas.
           </p>
           <div className="rise mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-7" style={{ '--i': 9 }}>
             <Cta />
@@ -82,7 +83,7 @@ function Hero() {
   )
 }
 
-const cinta = ['Puntos', 'Rebotes', 'Asistencias', 'Triples', 'Sin ventaja, no hay jugada']
+const cinta = ['Puntos', 'Rebotes', 'Asistencias', 'Triples', 'Datos, no promesas']
 
 // Cinta de marcador que corre bajo la portada.
 function Cinta() {
@@ -113,9 +114,9 @@ function Linea() {
   return (
     <section id="la-linea" className="py-16 md:py-28">
       <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
-        <Titulo className="max-w-[18ch]">¿Hay ventaja? <span className="hueco hueco-blanco">Pruébalo tú</span></Titulo>
+        <Titulo className="max-w-[18ch]">Línea, cuota y datos. <span className="hueco hueco-blanco">Pruébalo tú</span></Titulo>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
-          Elige un jugador, mueve la línea y la cuota, y mira de qué lado caen sus partidos. Así razona cada análisis de PropDeep, con muchos más datos.
+          Elige un jugador, mueve la línea y la cuota, y mira de qué lado caen sus partidos. Es el primer dato que mira cualquiera; PropDeep te da muchos más.
         </p>
       </div>
       <LaLinea />
@@ -177,25 +178,25 @@ function useDeslizar() {
   return ref
 }
 
-function SinVentaja() {
+function SinPromesas() {
   const ref = useDeslizar()
   return (
     <section ref={ref} className="relative overflow-hidden bg-white text-black">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
         <h2 className="display text-[4.4rem] sm:text-[8rem] lg:text-[10.5rem]">
-          <span className="lift block"><span className="deslizar block">Sin ventaja,</span></span>
-          <span className="lift hueco hueco-negro block" style={{ '--i': 1 }}><span className="deslizar deslizar-inverso block">no hay jugada.</span></span>
+          <span className="lift block"><span className="deslizar block">Datos,</span></span>
+          <span className="lift hueco hueco-negro block" style={{ '--i': 1 }}><span className="deslizar deslizar-inverso block">no promesas.</span></span>
         </h2>
         <p className="mt-8 max-w-2xl text-lg leading-relaxed font-medium">
-          La mayoría de servicios te dan picks todos los días, haya valor o no. Nosotros comparamos nuestra probabilidad con
-          la de la cuota, y si la diferencia no compensa, lo decimos claramente: "sin ventaja". Algunos días habrá pocas
-          jugadas, y eso también es información.
+          Muchos servicios venden picks y rachas. Nosotros te ahorramos el trabajo de buscar los datos de cada línea y de
+          comparar casas, y te los explicamos en español. Lo que hagas con ellos lo decides tú: es información orientativa
+          y no garantiza ganar.
         </p>
         <ul className="mt-14 grid gap-8 md:grid-cols-3 md:gap-10">
           {[
-            'Probabilidades, no promesas.',
-            'Todas las predicciones publicadas, las ganadas y las perdidas.',
-            'Hecho por un apostador que aplica el mismo criterio con su propio dinero.',
+            'Información orientativa, sin garantía de ningún resultado.',
+            'Las líneas de cada casa, comparadas en un vistazo.',
+            'Los picks del fundador, todos, también los fallados.',
           ].map((t, i) => (
             <li key={t} className="lift border-t-4 border-black pt-4 text-xl leading-snug font-semibold" style={{ '--i': i }}>{t}</li>
           ))}
@@ -215,7 +216,6 @@ function Dato({ label, value }) {
 }
 
 function TarjetaInforme({ informe }) {
-  const ventaja = informe.probEstimada - informe.probImplicita
   return (
     <article className="panel flex flex-col border-2 border-white/30 p-6">
       <p className="text-sm text-muted">{informe.tipo}</p>
@@ -223,16 +223,11 @@ function TarjetaInforme({ informe }) {
       <p className="text-sm text-muted">{informe.partido}</p>
       <p className="mt-3 font-semibold text-gold">{informe.prop}</p>
       <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-4 text-sm">
-        <Dato label="Cuota" value={fmtNum(informe.cuota)} />
-        <Dato label="Prob. implícita" value={fmtPct(informe.probImplicita)} />
-        <Dato label="Prob. estimada" value={fmtPct(informe.probEstimada)} />
-        <Dato label="Ventaja" value={fmtPct(ventaja)} />
-        <Dato label="Confianza" value={informe.confianza} />
-        <Dato label="Veredicto" value={informe.veredicto} />
+        <Dato label="Cuotas (más / menos)" value={informe.cuotas} />
+        <Dato label="Proyección" value={fmtNum(informe.proyeccion)} />
+        <Dato label="Superó la línea (últ. 10)" value={fmtPct(informe.superoUltimos10)} />
+        <Dato label="Media últimos 10" value={fmtNum(informe.mediaUltimos10)} />
       </dl>
-      <ul className="mt-5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-muted">
-        {informe.porque.map((p) => <li key={p}>{p}</li>)}
-      </ul>
       {informe.informe && (
         <details className="mt-5 text-sm">
           <summary className="cursor-pointer font-semibold text-gold">Leer el informe completo</summary>
@@ -275,8 +270,8 @@ function Ejemplos() {
       <div className="panel mx-auto max-w-6xl px-4 py-12 sm:px-10 md:py-16">
         <Titulo>Así es un análisis de <span className="text-gold">PropDeep</span></Titulo>
         <p className="mt-5 mb-12 max-w-2xl text-lg leading-relaxed text-muted">
-          Tres ejemplos reales{FECHA_EJEMPLOS ? ` con datos del ${new Date(FECHA_EJEMPLOS).toLocaleDateString('es-ES')}` : ''}:
-          uno con ventaja, uno sin ventaja y uno con confianza baja, para que veas cómo razonamos en cada caso.
+          Ejemplos reales{FECHA_EJEMPLOS ? ` con datos del ${new Date(FECHA_EJEMPLOS).toLocaleDateString('es-ES')}` : ''}
+          para que veas qué datos tienes de cada línea y cómo te los explicamos.
         </p>
         {reales.length ? (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -290,22 +285,23 @@ function Ejemplos() {
   )
 }
 
-function Historial() {
+function MisPicks() {
   return (
     <section className="pb-16 md:pb-24">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
         <div>
-          <Titulo>Nuestro historial, <span className="hueco hueco-blanco">a la vista</span></Titulo>
+          <Titulo>Ejemplo de mis picks <span className="hueco hueco-blanco">con ayuda de la página</span></Titulo>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            Publicamos cada análisis antes del partido, con su fecha y hora, y no se edita después. Cuando termina el
-            partido marcamos el resultado, gane o pierda. Empieza con el primer partido de la temporada 2026-27.
+            Los picks del fundador, hechos con los datos de PropDeep. Se publican antes del partido con su cuota y su casa, no
+            se editan y salen todos, también los fallados. Son suyos, no del modelo.
           </p>
-          <Link to="/historial" className="btn btn-ghost mt-8 h-12 px-6 text-lg">
-            Ver historial completo <ArrowRight aria-hidden className="size-4" />
+          <p className="mt-4 max-w-xl font-semibold">Resultados pasados no garantizan nada; a largo plazo es muy difícil ganar a la casa.</p>
+          <Link to="/mis-picks" className="btn btn-ghost mt-8 h-12 px-6 text-lg">
+            Ver todos los picks <ArrowRight aria-hidden className="size-4" />
           </Link>
         </div>
         <dl className="panel grid grid-cols-2 self-end border-t-2 border-l-2 border-white/40">
-          {['Análisis publicados', 'Acierto', 'Beneficio a 1 u', 'Rendimiento por confianza'].map((m, i) => (
+          {['Picks publicados', 'Ganados / perdidos', 'Unidades', 'Rendimiento'].map((m, i) => (
             <div key={m} className="lift border-r-2 border-b-2 border-white/40 p-5" style={{ '--i': i }}>
               <dt className="text-sm text-muted">{m}</dt>
               <dd className="display tnum mt-3 text-6xl text-gold">-</dd>
@@ -385,9 +381,9 @@ export default function Home() {
       <Cinta />
       <Linea />
       <ComoFunciona />
-      <SinVentaja />
+      <SinPromesas />
       <Ejemplos />
-      <Historial />
+      <MisPicks />
       <Precio />
       <Faq />
     </>

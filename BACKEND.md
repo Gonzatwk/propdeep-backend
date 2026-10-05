@@ -1,14 +1,20 @@
 # Backend de PropDeep
 
-API en FastAPI que analiza player props de la NBA con datos reales y guarda un historial
-público de todas las predicciones.
+API en FastAPI que analiza player props de la NBA con datos reales. Es información orientativa:
+el backtest de 2025-26 con cuotas reales no mostró ventaja frente a las casas, así que la web
+enseña datos (proyección, veces que superó la línea, desgloses, rival y las líneas de cada casa)
+y nunca un "más/menos" como recomendación. El veredicto interno del modelo se guarda solo para
+seguir midiéndolo (`/admin/predictions`).
 
 ## Cómo funciona un análisis
 
 1. **Datos del jugador** (Balldontlie): partidos de esta temporada y la anterior, solo los
    anteriores al partido analizado.
 2. **Tendencias**: medias de los últimos 5, 10 y 20 partidos, de la temporada, minutos y
-   porcentaje de veces que superó la línea.
+   porcentaje de veces que superó la línea (últimos 5, últimos 10, esta temporada y la anterior),
+   más el desglose en casa, fuera y contra el rival del día.
+   Las líneas de todas las casas se guardan con el análisis (comparador); la principal es la que
+   más casas ofrecen.
 3. **Contexto**: local o visitante, back-to-back, lesión, y en puntos cuánto concede el rival
    frente a la media de la liga (ajuste máximo del 5 %).
 4. **Probabilidad**: distribución normal (Poisson en triples) alrededor de la proyección,
@@ -23,17 +29,20 @@ público de todas las predicciones.
 
 | Método | Ruta | Qué hace |
 | --- | --- | --- |
-| GET | `/predictions` | Historial público completo |
-| GET | `/track-record` | Acierto, beneficio en unidades y ROI, total y por confianza |
+| GET | `/picks` | "Ejemplo de mis picks": todos los picks del autor, con su resumen |
+| POST | `/picks` | Publica un pick antes del partido (correo en `ADMIN_EMAILS` o `x-admin-token`) |
+| POST | `/picks/{id}/settle` | Resultado de un pick que no sale de la zona (los demás se liquidan solos) |
+| GET | `/admin/predictions` | Veredictos internos del modelo (no públicos) |
+| GET | `/admin/track-record` | Acierto y ROI de esos veredictos, para seguir midiendo el modelo |
 | POST | `/analyze` | Analiza una prop sin publicarla |
 | POST | `/admin/publish` | Analiza y publica en el historial (cabecera `x-admin-token`) |
 | GET | `/admin/scan?game_date=AAAA-MM-DD` | Analiza las props de la jornada con The Odds API |
-| POST | `/admin/settle` | Liquida las pendientes con el resultado real |
+| POST | `/admin/settle` | Liquida predicciones y picks pendientes con el resultado real |
 | POST | `/admin/board?game_date=AAAA-MM-DD` | Analiza todas las props de la jornada y las publica en la zona de partidos |
 | GET | `/admin/metrics` | Embudo de validación: pruebas iniciadas, pago tras la prueba, bajas |
 | GET | `/board` | Partidos de la jornada (por defecto, la próxima con partidos por jugar) |
-| GET | `/board/games/{event_id}` | Jugadores y líneas del partido; las bloqueadas van sin veredicto |
-| GET | `/board/lines/{id}` | Informe completo (402 si hace falta suscripción) |
+| GET | `/board/games/{event_id}` | Jugadores y líneas del partido; las bloqueadas van sin análisis |
+| GET | `/board/lines/{id}` | Análisis completo con el comparador de casas (402 si hace falta suscripción) |
 | POST | `/auth/login` · `/auth/verify` · `/auth/logout` | Acceso por enlace mágico, solo con el correo |
 | GET / DELETE | `/me` | Estado de la cuenta / borrar la cuenta |
 | POST | `/billing/checkout` · `/billing/portal` | Stripe Checkout (prueba de 7 días) y portal de cliente |
@@ -42,11 +51,20 @@ público de todas las predicciones.
 
 ## Zona de partidos y muro de pago
 
-- Cada línea de `/admin/board` se publica en el historial con su hash. Gratis se ven
-  `FREE_LINES_PER_DAY` líneas por jornada (la de más ventaja de los primeros partidos); el
-  resto solo con suscripción. Al empezar el partido, todo se abre y `/predictions` lo enseña.
-- Claude solo redacta las líneas con ventaja; las de "sin ventaja" llevan la plantilla.
+- Cada línea de `/admin/board` se guarda con su hash. Gratis se ven `FREE_LINES_PER_DAY`
+  líneas por jornada (los puntos del jugador con más proyección de los primeros partidos, sin
+  usar el veredicto del modelo); el resto solo con suscripción. Al empezar el partido, se abre.
+- Claude redacta los puntos de cada jugador y las líneas gratis, sin ver el veredicto del
+  modelo; el resto lleva la plantilla.
+- Los correos de `ADMIN_EMAILS` ven todas las líneas y pueden publicar picks desde la web.
 - La sesión es un token en la cabecera `Authorization: Bearer` (sin cookies).
+
+## Ejemplo de mis picks
+
+- Son los picks del autor, no del modelo. Se publican antes del partido (después se rechazan),
+  no se editan ni se borran y salen todos, también los fallados, con su cuota y su casa.
+- Si salen de una línea de la zona se liquidan solos con `/admin/settle`; si no, con
+  `/picks/{id}/settle`, una sola vez.
 
 ## Stripe (suscripción)
 

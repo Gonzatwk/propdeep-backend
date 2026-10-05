@@ -29,8 +29,23 @@ def test_template_never_promises():
         assert "seguro" not in text and "garantiz" not in text
 
 
-def test_no_edge_template_says_so():
-    assert "Sin ventaja" in template_report(_analysis([27.6] * 20))
+def test_template_is_analysis_not_a_pick():
+    for values in ([34.0] * 20, [27.6] * 20, [20.0] * 20):
+        text = template_report(_analysis(values))
+        assert "orientativa" in text and "Superó la línea" in text
+        for word in ("ventaja", "valor", "confianza", "recomendamos jugar"):
+            assert word not in text.lower()
+
+
+def test_claude_does_not_see_the_model_verdict():
+    import json
+
+    fake = FakeClaude()
+    write_report(_analysis([34.0] * 20), fake, books=[{"bookmaker": "bookA", "line": 27.5}])
+    data = json.loads(fake.calls[0]["messages"][0]["content"].split("\n", 1)[1])
+    assert data["books"][0]["bookmaker"] == "bookA" and data["projection"]
+    for key in ("side", "edge", "confidence", "expected_value", "prob_over_final"):
+        assert key not in data
 
 
 def test_claude_call_shape_and_fallbacks():

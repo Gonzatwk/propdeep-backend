@@ -45,7 +45,7 @@ function Proximamente() {
     <Pagina ancho="max-w-2xl">
       <h1 className="display text-[3rem] leading-none sm:text-[4rem]">Suscripción</h1>
       <p className="mt-4 text-lg text-muted">
-        Todas las líneas de cada partido con su veredicto, su probabilidad y el informe completo. Abre el 20 de octubre, con la temporada.
+        El análisis de todas las líneas de cada partido: proyección, veces que superó la línea, casa y fuera, rival, líneas de cada casa e informe. Abre el 20 de octubre, con la temporada.
       </p>
       <div className="mt-8"><Planes elegido={elegido} setElegido={setElegido} conPrueba /></div>
       <Link to="/#avisame" className="btn btn-gold mt-6 h-12 px-6 text-lg">Avísame cuando abra</Link>

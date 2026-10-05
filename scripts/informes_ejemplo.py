@@ -3,7 +3,7 @@
 Uso (con las claves en .env):
     python -m scripts.informes_ejemplo 2026-10-21 --max-events 3
 
-Elige uno con ventaja, uno sin ventaja y uno de confianza baja, y los escribe en
+Elige uno de puntos, uno de rebotes y uno de asistencias, y los escribe en
 web/src/data/informes_ejemplo.json, que es lo que lee la landing. Consume créditos de The Odds API
 (mercados x regiones por partido).
 """
@@ -17,18 +17,21 @@ from datetime import date
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import get_settings
-from propdeep.narrative import write_report
+from propdeep.narrative import facts, write_report
 from propdeep.pipeline import Analyzer, scan_day
 
 
 def pick_examples(results):
-    with_edge = [r for r in results if r[0].side and r[0].confidence in ("alta", "media")]
-    no_edge = [r for r in results if r[0].side is None and not r[0].reasons]
-    low = [r for r in results if r[0].confidence == "baja"]
-    chosen = []
-    for group in (with_edge, no_edge, low):
-        if group:
-            chosen.append(group[0])
+    """Un ejemplo de puntos, uno de rebotes y uno de asistencias, de jugadores distintos.
+    No se eligen por el veredicto del modelo: la web enseña análisis, no picks."""
+    chosen, players = [], set()
+    for stat in ("pts", "reb", "ast"):
+        for r in results:
+            a = r[0]
+            if a.stat == stat and not a.reasons and a.player not in players:
+                chosen.append(r)
+                players.add(a.player)
+                break
     return chosen
 
 
@@ -60,10 +63,11 @@ def main() -> None:
         examples.append({
             "partido": f"{prop.away_team} @ {prop.home_team}",
             "casa": prop.bookmaker,
-            "informe": write_report(analysis, claude, s.anthropic_model),
-            "analisis": analysis.to_dict(),
+            "informe": write_report(analysis, claude, s.anthropic_model, books=meta.get("books")),
+            # Sin el veredicto interno del modelo: este archivo se publica con la web.
+            "analisis": facts(analysis, meta.get("books")),
         })
-        print(f"- {analysis.player} {analysis.stat} {analysis.line}: {analysis.confidence}")
+        print(f"- {analysis.player} {analysis.stat} {analysis.line}")
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(examples, fh, ensure_ascii=False, indent=2)
     print(f"{len(results)} props analizadas, {len(examples)} ejemplos en {args.out}")

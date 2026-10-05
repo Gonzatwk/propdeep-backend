@@ -15,7 +15,7 @@ export default function Footer() {
             <p className="flex items-start gap-3 text-[0.95rem] leading-relaxed">
               <span className="tnum mt-0.5 shrink-0 bg-gold px-1.5 py-0.5 text-xs font-bold text-black">+18</span>
               <span>
-                PropDeep ofrece análisis estadístico con fines informativos, no consejos de inversión ni apuestas seguras.
+                PropDeep ofrece información estadística orientativa, sin garantía de ningún resultado: no son recomendaciones de apuesta ni consejos de inversión.
                 Apostar implica riesgo de perder dinero. Juega con moderación y solo con lo que puedas permitirte perder.
                 Si el juego deja de ser un entretenimiento, pide ayuda en{' '}
                 <a href="https://www.jugarbien.es" target="_blank" rel="noopener noreferrer" className="font-semibold underline">jugarbien.es</a>.

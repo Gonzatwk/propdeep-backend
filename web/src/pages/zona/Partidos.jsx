@@ -32,7 +32,7 @@ function TarjetaPartido({ g, enlace, i }) {
         </span>
         <span className="row-start-1 flex flex-col items-end gap-1 text-right text-sm sm:row-start-auto">
           <span className="tnum font-semibold">{g.lines} {g.lines === 1 ? 'línea' : 'líneas'} · {g.players} {g.players === 1 ? 'jugador' : 'jugadores'}</span>
-          <span className="tnum text-muted">{g.with_edge} con ventaja{g.free_lines ? ` · ${g.free_lines} gratis` : ''}</span>
+          {g.free_lines > 0 && <span className="tnum text-muted">{g.free_lines} {g.free_lines === 1 ? 'línea gratis' : 'líneas gratis'}</span>}
           {g.started && <span className="text-xs font-semibold text-gold uppercase">Empezado</span>}
         </span>
         <ArrowRight aria-hidden className="col-start-2 row-start-2 size-6 justify-self-end text-muted transition-transform group-hover:translate-x-1 group-hover:text-gold sm:col-start-auto sm:row-start-auto" />
@@ -77,7 +77,7 @@ export default function Partidos() {
 
       {!suscriptor && juegos.length > 0 && (
         <p className="mt-6 max-w-2xl text-muted">
-          Gratis ves <strong className="text-white">{datos.free_lines_per_day} líneas al día</strong> con su veredicto. Con la suscripción, todas.
+          Gratis ves el análisis completo de <strong className="text-white">{datos.free_lines_per_day} líneas al día</strong>. Con la suscripción, todas.
         </p>
       )}
 
@@ -87,7 +87,7 @@ export default function Partidos() {
         ) : error === 'sin-servidor' || (!error && juegos.length === 0) ? (
           <Vacio
             titulo="Los partidos llegan el 20 de octubre"
-            texto="Con el primer día de la temporada regular. Aquí verás cada partido, sus jugadores y el análisis de cada línea."
+            texto="Con el primer día de la temporada regular. Aquí verás cada partido, sus jugadores y los datos de cada línea, comparada entre casas."
           />
         ) : error ? (
           <Fallo reintentar={reintentar} />
