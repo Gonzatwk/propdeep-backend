@@ -158,45 +158,84 @@ def strip_suffix(name: str) -> str:
 # ------------------------------------------------------------------- Balldontlie
 
 class BdlFetcher:
-    """Descarga temporadas completas de Balldontlie con pausa y caché en disco."""
+    """Descarga temporadas completas de Balldontlie con pausa, reintentos y caché en disco.
+
+    Las estadísticas se piden por semanas y cada semana se guarda en su propio fichero, así que
+    si la descarga se corta (red, Balldontlie lento) al relanzar sigue donde se quedó.
+    """
 
     def __init__(self, api_key: str, cache: Path, pause: float = 1.05):
         import httpx
 
-        self.http = httpx.Client(base_url=BDL_URL, headers={"Authorization": api_key}, timeout=30.0)
+        self.httpx = httpx
+        self.http = httpx.Client(base_url=BDL_URL, headers={"Authorization": api_key},
+                                 timeout=httpx.Timeout(90.0, connect=20.0))
         self.cache = cache
         self.pause = pause  # ALL-STAR: 60 peticiones por minuto
+
+    def _get(self, path: str, params: dict) -> dict:
+        for attempt in range(8):
+            wait = min(120, 5 * 2 ** attempt)
+            try:
+                resp = self.http.get(path, params=params)
+            except self.httpx.TransportError as exc:  # timeouts y cortes de conexión
+                print(f"  {type(exc).__name__} en {path}; reintento en {wait} s")
+                time.sleep(wait)
+                continue
+            if resp.status_code == 429 or resp.status_code >= 500:
+                print(f"  HTTP {resp.status_code} en {path}; reintento en {wait} s")
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        raise SystemExit(f"Balldontlie no responde tras varios intentos ({path}). Vuelve a lanzar el"
+                         " script más tarde: lo ya descargado no se pierde.")
 
     def _all(self, path: str, params: dict) -> list[dict]:
         items, params = [], {**params, "per_page": 100}
         while True:
-            for attempt in range(6):
-                resp = self.http.get(path, params=params)
-                if resp.status_code == 429:
-                    time.sleep(10 * (attempt + 1))
-                    continue
-                resp.raise_for_status()
-                break
-            body = resp.json()
+            body = self._get(path, params)
             items.extend(body.get("data", []))
             time.sleep(self.pause)
             cursor = body.get("meta", {}).get("next_cursor")
             if not cursor:
                 return items
             params["cursor"] = cursor
-            if len(items) % 5000 == 0:
-                print(f"  {path}: {len(items)} filas…")
+
+    def _cached(self, name: str, fetch) -> list[dict]:
+        f = self.cache / "bdl" / name
+        if f.exists():
+            return json.loads(f.read_text(encoding="utf-8"))
+        data = fetch()
+        f.parent.mkdir(parents=True, exist_ok=True)
+        tmp = f.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        tmp.replace(f)
+        return data
 
     def season(self, season: int) -> tuple[list[dict], list[dict]]:
-        f = self.cache / f"bdl_{season}.json"
-        if f.exists():
-            data = json.loads(f.read_text(encoding="utf-8"))
-            return data["stats"], data["games"]
-        print(f"Descargando temporada {season} de Balldontlie (tarda unos minutos, solo la primera vez)")
-        games = self._all("/games", {"seasons[]": season})
-        stats = self._all("/stats", {"seasons[]": season})
-        f.parent.mkdir(parents=True, exist_ok=True)
-        f.write_text(json.dumps({"stats": stats, "games": games}), encoding="utf-8")
+        print(f"Temporada {season} de Balldontlie (la primera vez tarda; lo descargado se guarda)")
+        games = self._cached(f"games_{season}.json", lambda: self._all("/games", {"seasons[]": season}))
+        days = sorted(str(g["date"])[:10] for g in games)
+        if not days:
+            return [], games
+        stats: list[dict] = []
+        week = date.fromisoformat(days[0])
+        last = date.fromisoformat(days[-1])
+        today = date.today()
+        while week <= last:
+            end = min(week + timedelta(days=6), last)
+            name = f"stats_{season}_{week.isoformat()}.json"
+            if end >= today:  # semana sin terminar: no la guardamos
+                stats += self._all("/stats", {"seasons[]": season, "start_date": week.isoformat(),
+                                              "end_date": end.isoformat()})
+            else:
+                fresh = not (self.cache / "bdl" / name).exists()
+                stats += self._cached(name, lambda w=week, e=end: self._all(
+                    "/stats", {"seasons[]": season, "start_date": w.isoformat(), "end_date": e.isoformat()}))
+                if fresh:
+                    print(f"  semana del {week}: {len(stats)} filas en total")
+            week = end + timedelta(days=1)
         return stats, games
 
 

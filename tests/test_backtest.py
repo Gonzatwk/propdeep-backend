@@ -131,3 +131,33 @@ def test_odds_history_uses_cache_and_respects_budget(tmp_path):
     n = len(calls)
     h2 = make(100)
     assert h2.candidates(season, [day], ["pts"])[0] and h2.spent == 0 and len(calls) == n
+
+
+def test_bdl_fetcher_retries_timeouts_and_resumes(tmp_path, monkeypatch):
+    import httpx
+
+    import scripts.backtest as bt
+
+    monkeypatch.setattr(bt.time, "sleep", lambda _s: None)
+    state = {"timeouts": 2, "stats_calls": 0}
+    games = [{"id": 1, "date": "2025-10-21"}, {"id": 2, "date": "2025-11-02"}]
+
+    def handler(request):
+        if request.url.path.endswith("/games"):
+            return httpx.Response(200, json={"data": games, "meta": {}})
+        if state["timeouts"]:
+            state["timeouts"] -= 1
+            raise httpx.ReadTimeout("lento", request=request)
+        state["stats_calls"] += 1
+        return httpx.Response(200, json={"data": [{"week": request.url.params["start_date"]}], "meta": {}})
+
+    def make():
+        f = bt.BdlFetcher("k", tmp_path)
+        f.http = httpx.Client(base_url="https://x", transport=httpx.MockTransport(handler))
+        return f
+
+    stats, _ = make().season(2025)
+    assert [s["week"] for s in stats] == ["2025-10-21", "2025-10-28"]
+    calls = state["stats_calls"]
+    make().season(2025)  # segunda vez: todo de la caché
+    assert state["stats_calls"] == calls
