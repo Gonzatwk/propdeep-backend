@@ -16,6 +16,11 @@ export default function Privacidad() {
           cuando abra PropDeep. Base legal: tu consentimiento, que puedes retirar en cualquier momento escribiéndonos.
         </li>
         <li>
+          <strong>Tu cuenta:</strong> para entrar solo pedimos tu correo; te mandamos un enlace de acceso y no hay
+          contraseña. Guardamos el correo, la fecha de alta y el estado de tu suscripción. Puedes borrar la cuenta
+          desde «Mi cuenta». Base legal: ejecución del contrato.
+        </li>
+        <li>
           <strong>Pago de la suscripción (cuando abra):</strong> el pago lo gestiona Stripe. Nosotros recibimos tu nombre, correo y
           el estado del pago, nunca los datos completos de tu tarjeta. Base legal: ejecución del contrato.
         </li>
@@ -32,6 +37,8 @@ export default function Privacidad() {
       <h2>Proveedores</h2>
       <ul>
         <li>Stripe (pagos).</li>
+        <li>El servidor de la API de PropDeep (cuentas y estado de la suscripción).</li>
+        <li>El proveedor de correo con el que enviamos el enlace de acceso.</li>
         <li>Cloudflare (alojamiento de la web y almacenamiento de los correos del aviso de apertura).</li>
       </ul>
       <p>

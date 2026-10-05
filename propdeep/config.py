@@ -29,6 +29,19 @@ class Settings:
     # Peso del modelo estadístico frente a la probabilidad del mercado (sin margen).
     model_weight: float = field(default_factory=lambda: _float("MODEL_WEIGHT", 0.5))
     cors_origins: str = field(default_factory=lambda: os.getenv("CORS_ORIGINS", "*"))
+    # Dirección pública de la web: para el enlace de acceso y las vueltas de Stripe.
+    web_url: str = field(default_factory=lambda: os.getenv("WEB_URL", "https://propdeep.pages.dev").rstrip("/"))
+    # Líneas por jornada que se ven gratis con su veredicto; el resto, con suscripción.
+    free_lines_per_day: int = field(default_factory=lambda: int(os.getenv("FREE_LINES_PER_DAY", "3")))
+    stripe_secret_key: str = field(default_factory=lambda: os.getenv("STRIPE_SECRET_KEY", ""))
+    stripe_webhook_secret: str = field(default_factory=lambda: os.getenv("STRIPE_WEBHOOK_SECRET", ""))
+    stripe_price_monthly: str = field(default_factory=lambda: os.getenv("STRIPE_PRICE_MONTHLY", ""))
+    stripe_price_yearly: str = field(default_factory=lambda: os.getenv("STRIPE_PRICE_YEARLY", ""))
+    smtp_host: str = field(default_factory=lambda: os.getenv("SMTP_HOST", ""))
+    smtp_port: int = field(default_factory=lambda: int(os.getenv("SMTP_PORT", "587")))
+    smtp_user: str = field(default_factory=lambda: os.getenv("SMTP_USER", ""))
+    smtp_password: str = field(default_factory=lambda: os.getenv("SMTP_PASSWORD", ""))
+    mail_from: str = field(default_factory=lambda: os.getenv("MAIL_FROM", ""))
 
 
 def get_settings() -> Settings:

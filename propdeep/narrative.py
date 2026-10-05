@@ -53,28 +53,33 @@ def write_report(analysis: Analysis, client=None, model: str = "claude-opus-5-5"
     return text or template_report(analysis)
 
 
+def _n(x: float, digits: int = 1) -> str:
+    """Número con coma decimal, como se escribe en español."""
+    return f"{round(x, digits):g}".replace(".", ",")
+
+
 def template_report(a: Analysis) -> str:
     label = STAT_LABELS.get(a.stat, a.stat)
     t = a.trends
     parts = [
-        f"{a.player}: línea de {a.line} {label}. Proyectamos {a.projection}.",
+        f"{a.player}: línea de {_n(a.line)} {label}. Proyectamos {_n(a.projection)}.",
     ]
     if t.last10 is not None:
         hit = f" y superó la línea en el {round((t.hit_rate_last10 or 0) * 100)} % de ellos" if t.hit_rate_last10 is not None else ""
-        parts.append(f"Promedia {t.last10} en sus últimos {min(t.games, 10)} partidos{hit}.")
+        parts.append(f"Promedia {_n(t.last10)} en sus últimos {min(t.games, 10)} partidos{hit}.")
     if a.context.opponent:
         where = "en casa" if a.context.home else "fuera" if a.context.home is False else ""
         b2b = ", en back-to-back" if a.context.back_to_back else ""
         parts.append(f"Juega {where} contra {a.context.opponent}{b2b}.".replace("Juega  ", "Juega "))
-    p_over = round(a.prob_over_final * 100, 1)
-    p_market = round(a.prob_over_market * 100, 1)
-    parts.append(f"Estimamos un {p_over} % para el over frente al {p_market} % que marca el mercado sin margen.")
+    p_over = _n(a.prob_over_final * 100)
+    p_market = _n(a.prob_over_market * 100)
+    parts.append(f"Estimamos un {p_over} % para el más frente al {p_market} % que marca el mercado sin margen.")
     if a.side is None:
         parts.extend(a.reasons)
         parts.append("Sin ventaja: no recomendamos jugar esta prop.")
     else:
         parts.append(
-            f"Vemos valor en el {a.side} a cuota {a.odds_taken} "
-            f"(ventaja de {round(a.edge * 100, 1)} puntos). Confianza {a.confidence}."
+            f"Vemos valor en el {'más' if a.side == 'over' else 'menos'} a cuota {f'{a.odds_taken:.2f}'.replace('.', ',')} "
+            f"(ventaja de {_n(a.edge * 100)} puntos). Confianza {a.confidence}."
         )
     return " ".join(parts)
