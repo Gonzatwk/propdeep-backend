@@ -12,7 +12,17 @@ import HistorialPage from './pages/HistorialPage'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import Privacidad from './pages/Privacidad'
+import Cuenta from './pages/zona/Cuenta'
+import Entrar from './pages/zona/Entrar'
+import Informe from './pages/zona/Informe'
+import Partido from './pages/zona/Partido'
+import Partidos from './pages/zona/Partidos'
+import { CuentaProvider } from './lib/cuenta'
 import useReveal from './lib/useReveal'
+
+// Zona de partidos y cuenta: sin campo de tiros ni reloj, para leer datos sin ruido.
+const ZONA = ['/partidos', '/entrar', '/cuenta']
+const enZona = (ruta) => ZONA.some((z) => ruta === z || ruta.startsWith(`${z}/`))
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
@@ -25,19 +35,26 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  const zona = enZona(useLocation().pathname)
   return (
+    <CuentaProvider>
     <div className="flex min-h-dvh flex-col">
       <a href="#contenido" className="sr-only z-50 bg-gold px-4 py-2 font-semibold text-black focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
         Saltar al contenido
       </a>
       <ScrollToTop />
-      <FondoPista />
+      {!zona && <FondoPista />}
       <Anuncio />
       <Header />
       <main id="contenido" className="relative z-10 flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/historial" element={<HistorialPage />} />
+          <Route path="/partidos" element={<Partidos />} />
+          <Route path="/partidos/:eventId" element={<Partido />} />
+          <Route path="/partidos/:eventId/:lineId" element={<Informe />} />
+          <Route path="/entrar" element={<Entrar />} />
+          <Route path="/cuenta" element={<Cuenta />} />
           <Route path="/aviso-legal" element={<AvisoLegal />} />
           <Route path="/privacidad" element={<Privacidad />} />
           <Route path="/cookies" element={<Cookies />} />
@@ -45,8 +62,9 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
-      <RelojPosesion />
+      {!zona && <RelojPosesion />}
       <Cursor />
     </div>
+    </CuentaProvider>
   )
 }

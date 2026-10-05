@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
+import { UserCircle } from '@phosphor-icons/react'
+import { useCuenta } from '../lib/cuenta'
 import Cta from './Cta'
 import Logo from './Logo'
 
 const link = 'px-2.5 py-1.5 text-sm font-semibold text-muted transition-colors hover:text-gold'
+const activo = ({ isActive }) => `${link} ${isActive ? 'text-white underline decoration-gold decoration-2 underline-offset-[6px]' : ''}`
 
 // Línea dorada bajo la cabecera que avanza con el scroll, con un balón en la punta.
 function Progreso() {
@@ -38,14 +41,20 @@ function Progreso() {
 }
 
 export default function Header() {
+  const { usuario } = useCuenta()
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-black/80 text-white backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo />
         <nav aria-label="Principal" className="flex items-center gap-1">
-          <a href="/#como-funciona" className={`${link} hidden md:inline-block`}>Cómo funciona</a>
-          <NavLink to="/historial" className={({ isActive }) => `${link} ${isActive ? 'text-white underline decoration-gold decoration-2 underline-offset-[6px]' : ''}`}>Historial</NavLink>
-          <a href="/#precio" className={`${link} hidden sm:inline-block`}>Precio</a>
+          <a href="/#como-funciona" className={`${link} hidden lg:inline-block`}>Cómo funciona</a>
+          <NavLink to="/partidos" className={activo}>Partidos</NavLink>
+          <NavLink to="/historial" className={activo}>Historial</NavLink>
+          <a href="/#precio" className={`${link} hidden md:inline-block`}>Precio</a>
+          <NavLink to={usuario ? '/cuenta' : '/entrar'} className={activo} aria-label={usuario ? 'Mi cuenta' : 'Entrar'}>
+            <UserCircle aria-hidden className="size-5 sm:hidden" />
+            <span className="hidden sm:inline">{usuario ? 'Cuenta' : 'Entrar'}</span>
+          </NavLink>
           <span className="tnum mx-1.5 border-2 border-white px-1.5 py-0.5 text-xs font-bold" title="Solo mayores de 18 años">+18</span>
           <Cta size="sm" className="ml-1 hidden sm:inline-flex">Avísame</Cta>
         </nav>
