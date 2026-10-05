@@ -77,7 +77,7 @@ export function Muro({ bloqueadas, compacto = false }) {
       </p>
       <p className="mt-3 max-w-xl text-muted">
         Con la suscripción ves el análisis de cada línea: proyección, cuántas veces superó la línea, casa y fuera, el rival,
-        las líneas de cada casa y el informe. Prueba {PRECIO.prueba} días gratis;
+        las líneas de cada casa, el informe y el chat para preguntar por los datos. Prueba {PRECIO.prueba} días gratis;
         después {PRECIO.mensual} € al mes o {PRECIO.anual} € al año. Cancelas cuando quieras.
       </p>
       <Link to={destino} className="btn btn-gold mt-5 h-12 px-6 text-lg">

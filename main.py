@@ -8,7 +8,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Re
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from propdeep import accounts, billing, board, picks
+from propdeep import accounts, billing, board, chat, picks
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import Settings, get_settings
@@ -470,3 +470,54 @@ def settle_pick(pick_id: int, req: SettleRequest):
             raise HTTPException(404, str(exc)) from exc
         except picks.PickError as exc:
             raise HTTPException(409, str(exc)) from exc
+
+
+# --- Chat en español sobre los datos del día ----------------------------------------------
+
+class ChatMessage(BaseModel):
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(max_length=4000)
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1, max_length=40)
+
+
+def _chat_user(user=Depends(require_user)):
+    if not _sees_all(user):
+        raise HTTPException(402, "El chat es para suscriptores")
+    return user
+
+
+@app.get("/chat")
+def chat_status(user=Depends(_chat_user)):
+    limit = settings().chat_messages_per_day
+    with session_factory()() as session:
+        return {"enabled": claude_client() is not None, "limit": limit,
+                "remaining": chat.remaining(session, user.id, limit)}
+
+
+@app.post("/chat")
+def chat_message(req: ChatRequest, user=Depends(_chat_user)):
+    """Responde una pregunta sobre la jornada. No se guarda la conversación."""
+    import anthropic
+
+    client = claude_client()
+    if client is None:
+        raise HTTPException(503, "El chat todavía no está activado")
+    s = settings()
+    with session_factory()() as session:
+        try:
+            left = chat.take_message(session, user.id, s.chat_messages_per_day)
+        except chat.LimitReached:
+            raise HTTPException(429, f"Has llegado a los {s.chat_messages_per_day} mensajes de hoy. Mañana más.") from None
+        try:
+            reply = chat.answer(session, [m.model_dump() for m in req.messages], client,
+                                s.chat_model or s.anthropic_model, s.chat_effort)
+        except ValueError as exc:
+            chat.give_back(session, user.id)
+            raise HTTPException(422, str(exc)) from exc
+        except anthropic.APIError as exc:
+            chat.give_back(session, user.id)
+            raise HTTPException(502, "El chat no responde ahora. Vuelve a intentarlo en un rato.") from exc
+    return {"reply": reply, "remaining": left, "disclaimer": DISCLAIMER}

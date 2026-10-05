@@ -43,6 +43,7 @@ seguir midiéndolo (`/admin/predictions`).
 | GET | `/board` | Partidos de la jornada (por defecto, la próxima con partidos por jugar) |
 | GET | `/board/games/{event_id}` | Jugadores y líneas del partido; las bloqueadas van sin análisis |
 | GET | `/board/lines/{id}` | Análisis completo con el comparador de casas (402 si hace falta suscripción) |
+| GET / POST | `/chat` | Estado del chat (mensajes que quedan hoy) / pregunta al chat (suscriptores) |
 | POST | `/auth/login` · `/auth/verify` · `/auth/logout` | Acceso por enlace mágico, solo con el correo |
 | GET / DELETE | `/me` | Estado de la cuenta / borrar la cuenta |
 | POST | `/billing/checkout` · `/billing/portal` | Stripe Checkout (prueba de 7 días) y portal de cliente |
@@ -58,6 +59,19 @@ seguir midiéndolo (`/admin/predictions`).
   modelo; el resto lleva la plantilla.
 - Los correos de `ADMIN_EMAILS` ven todas las líneas y pueden publicar picks desde la web.
 - La sesión es un token en la cabecera `Authorization: Bearer` (sin cookies).
+
+## Chat (suscriptores)
+
+- Claude responde en español con tres herramientas que leen la zona de partidos: `partidos`,
+  `buscar_lineas` (por jugador, equipo, partido o estadística, y ordenadas por veces por encima
+  de la línea) y `detalle_linea`. No ve el veredicto interno del modelo y tiene prohibido decir
+  qué apostar o hablar de "valor"; si alguien habla de recuperar pérdidas, recomienda jugarbien.es.
+- Solo para suscriptores y `ADMIN_EMAILS`. Sin `ANTHROPIC_API_KEY` responde 503.
+- Límite de `CHAT_MESSAGES_PER_DAY` mensajes por persona y día (30 por defecto); si la respuesta
+  falla por nuestra parte, el mensaje no cuenta. `CHAT_EFFORT` ajusta el esfuerzo del modelo y
+  `CHAT_MODEL` permite usar otro modelo solo para el chat (vacío = `ANTHROPIC_MODEL`).
+- No se guardan las conversaciones: la web reenvía los últimos mensajes y el servidor solo cuenta
+  cuántos manda cada persona al día.
 
 ## Ejemplo de mis picks
 

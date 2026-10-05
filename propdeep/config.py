@@ -35,6 +35,11 @@ class Settings:
     web_url: str = field(default_factory=lambda: os.getenv("WEB_URL", "https://propdeep.pages.dev").rstrip("/"))
     # Líneas por jornada que se ven gratis con su análisis; el resto, con suscripción.
     free_lines_per_day: int = field(default_factory=lambda: int(os.getenv("FREE_LINES_PER_DAY", "3")))
+    # Chat para suscriptores: mensajes por usuario y día, y esfuerzo de Claude (low/medium/high).
+    chat_messages_per_day: int = field(default_factory=lambda: int(os.getenv("CHAT_MESSAGES_PER_DAY", "30")))
+    chat_effort: str = field(default_factory=lambda: os.getenv("CHAT_EFFORT", "medium"))
+    # Modelo del chat; vacío = el mismo que los informes (ANTHROPIC_MODEL).
+    chat_model: str = field(default_factory=lambda: os.getenv("CHAT_MODEL", ""))
     stripe_secret_key: str = field(default_factory=lambda: os.getenv("STRIPE_SECRET_KEY", ""))
     stripe_webhook_secret: str = field(default_factory=lambda: os.getenv("STRIPE_WEBHOOK_SECRET", ""))
     stripe_price_monthly: str = field(default_factory=lambda: os.getenv("STRIPE_PRICE_MONTHLY", ""))

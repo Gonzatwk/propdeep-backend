@@ -239,3 +239,25 @@ export function demoPicks() {
     warning: 'Resultados pasados no garantizan nada; a largo plazo es muy difícil ganar a la casa.',
   }
 }
+
+// Conversación de ejemplo del chat, con los números de la jornada de demostración.
+export function demoChat(nombreCasa) {
+  const top = LINEAS.filter((l) => l.stat === 'pts')
+    .sort((a, b) => b.hit_rates.last10 - a.hit_rates.last10 || b.hit_rates.last5 - a.hit_rates.last5)
+    .slice(0, 3)
+  const l = LINEAS.find((x) => x.stat === 'pts' && x.books.length >= 4) || LINEAS[0]
+  const cuota = (x) => x.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const lista = l.books.map((b) => `- ${nombreCasa(b.bookmaker)}: ${es(b.line)}, más a ${cuota(b.over_odds)} y menos a ${cuota(b.under_odds)}`)
+  return [
+    { role: 'user', content: '¿Quién ha superado más veces su línea de puntos en los últimos 10 partidos?' },
+    {
+      role: 'assistant',
+      content: `Hoy, en puntos:\n${top.map((t) => `- ${t.player}: ${pct(t.hit_rates.last10)} de los últimos 10 por encima de ${es(t.line)} (proyección ${es(t.projection)})`).join('\n')}\n\nDiez partidos son una muestra corta y la casa ya cuenta con la racha al poner la línea. Es un dato, no una recomendación.`,
+    },
+    { role: 'user', content: `Compara las casas para ${l.player} en puntos` },
+    {
+      role: 'assistant',
+      content: `${l.player}, puntos:\n${lista.join('\n')}\n\nLa línea más baja para el más es ${es(l.best.over.line)} a ${cuota(l.best.over.odds)}, y la más alta para el menos, ${es(l.best.under.line)} a ${cuota(l.best.under.odds)}. Las cuotas cambian: compruébalas en la casa antes de nada.`,
+    },
+  ]
+}
