@@ -341,10 +341,12 @@ class OddsHistory:
         if resp.status_code in (401, 403):
             raise SystemExit("The Odds API rechaza la clave para cuotas históricas: comprueba que ODDS_API_KEY"
                              " es la de tu cuenta y que el plan de pago ya está activo.")
-        if resp.status_code == 422:  # sin datos para ese momento
+        if resp.status_code in (404, 422):  # partido sin cuotas guardadas (p. ej. aplazado)
             body = {"data": None}
+        elif resp.status_code >= 400:
+            # Sin la URL: lleva la clave y no debe salir en pantalla.
+            raise SystemExit(f"The Odds API respondió {resp.status_code} en {path}. Lo descargado no se pierde.")
         else:
-            resp.raise_for_status()
             body = resp.json()
         self.spent += int(resp.headers.get("x-requests-last", cost_estimate) or 0)
         self.remaining = resp.headers.get("x-requests-remaining", self.remaining)

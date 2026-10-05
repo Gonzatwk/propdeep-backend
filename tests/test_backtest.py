@@ -185,3 +185,19 @@ def test_odds_history_retries_and_explains_bad_key(tmp_path, monkeypatch):
     h2.http = httpx.Client(base_url="https://x", transport=httpx.MockTransport(lambda r: httpx.Response(401)))
     with pytest.raises(SystemExit, match="plan de pago"):
         h2._get("/a", {"date": "d"}, 1)
+
+
+def test_odds_history_skips_missing_event_and_hides_key(tmp_path):
+    import httpx
+
+    import scripts.backtest as bt
+
+    h = bt.OddsHistory("CLAVE-SECRETA", tmp_path, "us", ["player_points"], 100)
+    h.http = httpx.Client(base_url="https://x", transport=httpx.MockTransport(lambda r: httpx.Response(404)))
+    assert h._get("/ev", {"date": "d"}, 10) == {"data": None}
+
+    h2 = bt.OddsHistory("CLAVE-SECRETA", tmp_path / "b", "us", ["player_points"], 100)
+    h2.http = httpx.Client(base_url="https://x", transport=httpx.MockTransport(lambda r: httpx.Response(400)))
+    with pytest.raises(SystemExit) as exc:
+        h2._get("/ev", {"date": "d"}, 10)
+    assert "CLAVE-SECRETA" not in str(exc.value)
