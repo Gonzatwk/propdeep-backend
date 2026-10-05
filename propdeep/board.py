@@ -1,7 +1,9 @@
 """Zona de partidos: la jornada con todas las líneas analizadas y el muro de pago.
 
-Cada línea analizada se publica en el historial (con su hash), así que todo lo que ve
-un suscriptor queda registrado. Antes del partido, el veredicto solo lo ven los
+Modo análisis: se enseñan datos (proyección, % sobre la línea, desgloses, rival y las
+líneas de cada casa), nunca un "más/menos" como recomendación. El backtest de 2025-26 no
+mostró ventaja frente a las casas, así que el veredicto interno del modelo se guarda para
+seguir midiéndolo, pero no sale de la API. Antes del partido, el análisis solo lo ven los
 suscriptores y las pocas líneas gratis del día; al empezar el partido se abre a todos.
 """
 from __future__ import annotations
@@ -41,22 +43,29 @@ def is_unlocked(p: Prediction, subscriber: bool, now: datetime | None = None) ->
 
 
 def _pick_free(candidates: list[tuple[Analysis, dict]], quota: int) -> set[int]:
-    """Elige las líneas gratis: la de más ventaja de cada partido, por orden de hora,
-    sin repetir jugador. Si faltan líneas con ventaja, completa con el resto."""
+    """Elige las líneas gratis: una por partido, por orden de hora, sin repetir jugador.
+    En cada partido, los puntos del jugador con más proyección (el que más se busca).
+    No usa el veredicto del modelo: lo gratis no debe parecer una recomendación."""
     if quota <= 0:
         return set()
-    order = sorted(range(len(candidates)), key=lambda i: (candidates[i][1].get("commence_time") or "", -candidates[i][0].edge))
+    order = sorted(range(len(candidates)), key=lambda i: (
+        candidates[i][1].get("commence_time") or "",
+        candidates[i][0].stat != "pts",
+        -candidates[i][0].projection,
+    ))
     chosen: list[int] = []
-    for with_edge_only in (True, False):
-        for i in order:
-            a, meta = candidates[i]
-            if len(chosen) >= quota:
-                break
-            if i in chosen or (with_edge_only and not a.side):
-                continue
-            taken = [candidates[j] for j in chosen]
-            if any(m.get("event_id") == meta.get("event_id") or c.player == a.player for c, m in taken):
-                continue
+    for i in order:
+        a, meta = candidates[i]
+        if len(chosen) >= quota:
+            break
+        taken = [candidates[j] for j in chosen]
+        if any(m.get("event_id") == meta.get("event_id") or c.player == a.player for c, m in taken):
+            continue
+        chosen.append(i)
+    for i in order:  # pocos partidos: completa con el resto
+        if len(chosen) >= quota:
+            break
+        if i not in chosen and all(candidates[j][0].player != candidates[i][0].player for j in chosen):
             chosen.append(i)
     return set(chosen)
 
@@ -66,7 +75,7 @@ def publish_board(
     results: list,
     day: date,
     free_quota: int,
-    write_report: Callable[[Analysis], str],
+    write_report: Callable[[Analysis, dict], str],
 ) -> list[Prediction]:
     """Publica en el historial las líneas de la jornada que aún no estén (no se duplican)."""
     existing = session.scalars(select(Prediction).where(Prediction.game_date == day.isoformat())).all()
@@ -81,6 +90,7 @@ def publish_board(
         seen.add(key)
         fresh.append((analysis, {
             **meta,
+            "books": meta.get("books") or [],
             "commence_time": prop.commence_time,
             "home_team": prop.home_team,
             "away_team": prop.away_team,
@@ -90,15 +100,38 @@ def publish_board(
     published = []
     for i, (analysis, meta) in enumerate(fresh):
         meta = {**meta, "free": i in free, "commence_time": _parse_time(meta["commence_time"])}
+        data = {**analysis.to_dict(), "books": meta["books"]}
         published.append(
-            publish(session, analysis=analysis.to_dict(), report=write_report(analysis), meta=meta, commit=False)
+            publish(session, analysis=data, report=write_report(analysis, meta), meta=meta, commit=False)
         )
     session.commit()
     return published
 
 
+def _hit_rates(t: dict) -> dict:
+    return {
+        "last5": t.get("hit_rate_last5"),
+        "last10": t.get("hit_rate_last10"),
+        "season": t.get("hit_rate_season"),
+        "season_games": t.get("season_games", 0),
+        "last_season": t.get("hit_rate_last_season"),
+        "last_season_games": t.get("last_season_games", 0),
+    }
+
+
+def best_prices(books: list[dict]) -> dict:
+    """Mejor opción para el más (línea más baja; a igualdad, más cuota) y para el menos."""
+    if not books:
+        return {"over": None, "under": None}
+    over = min(books, key=lambda b: (b["line"], -b["over_odds"]))
+    under = max(books, key=lambda b: (b["line"], b["under_odds"]))
+    pick = lambda b, k: {"bookmaker": b["bookmaker"], "line": b["line"], "odds": b[k]}  # noqa: E731
+    return {"over": pick(over, "over_odds"), "under": pick(under, "under_odds")}
+
+
 def line_summary(p: Prediction, unlocked: bool) -> dict:
     a = p.analysis or {}
+    books = a.get("books") or []
     out = {
         "id": p.id,
         "event_id": p.event_id,
@@ -108,34 +141,29 @@ def line_summary(p: Prediction, unlocked: bool) -> dict:
         "over_odds": a.get("over_odds"),
         "under_odds": a.get("under_odds"),
         "bookmaker": p.bookmaker,
+        "books_count": len({b["bookmaker"] for b in books}) or 1,
         "free": p.free,
         "locked": not unlocked,
     }
     if unlocked:
         out.update(
-            side=p.side,
-            odds=p.odds,
-            confidence=p.confidence,
-            edge=p.edge,
-            probability=round(p.prob, 4),
-            prob_over=a.get("prob_over_final"),
-            prob_over_market=a.get("prob_over_market"),
             projection=a.get("projection"),
-            status=p.status,
-            actual=p.actual,
+            hit_rates=_hit_rates(a.get("trends") or {}),
+            best=best_prices(books),
         )
     return out
 
 
 def line_detail(p: Prediction) -> dict:
     a = p.analysis or {}
+    trends = a.get("trends") or {}
     return {
         **line_summary(p, True),
         "game": game_header(p),
         "report": p.report,
-        "reasons": a.get("reasons", []),
-        "expected_value": a.get("expected_value"),
-        "trends": a.get("trends"),
+        "notes": a.get("reasons", []),
+        "books": a.get("books") or [],
+        "trends": {k: v for k, v in trends.items() if not k.startswith("hit_rate")},
         "context": a.get("context"),
         "published_at": _aware(p.published_at).isoformat(),
         "content_hash": p.content_hash,
@@ -188,7 +216,6 @@ def games(lines: list[Prediction]) -> list[dict]:
             **game_header(ps[0]),
             "lines": len(ps),
             "players": len({p.player_name for p in ps}),
-            "with_edge": sum(1 for p in ps if p.side),
             "free_lines": sum(1 for p in ps if p.free),
             "started": started(ps[0]),
         })

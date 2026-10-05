@@ -65,11 +65,47 @@ class OddsClient:
             },
         )
         resp.raise_for_status()
-        return parse_props(resp.json())
+        return parse_all_props(resp.json())
 
 
 def parse_props(payload: dict) -> list[PropLine]:
-    """Agrupa over/under por (casa, mercado, jugador, línea) y se queda con la mejor cuota."""
+    """Una línea por (mercado, jugador, línea): la de la casa con menos margen."""
+    best: dict[tuple, PropLine] = {}
+    for prop in parse_all_props(payload):
+        key = (prop.market, prop.player, prop.line)
+        current = best.get(key)
+        # Menor margen = mercado más eficiente; es la referencia más honesta.
+        if current is None or _overround(prop) < _overround(current):
+            best[key] = prop
+    return list(best.values())
+
+
+def main_lines(props: list[PropLine]) -> list[tuple[PropLine, list[PropLine]]]:
+    """Por jugador y mercado: la línea principal y todas las de cada casa (para compararlas).
+
+    La principal es la que más casas ofrecen (a igualdad, la más cercana al 50/50) y, dentro
+    de ella, la cuota de la casa con menos margen."""
+    groups: dict[tuple, list[PropLine]] = {}
+    for prop in props:
+        groups.setdefault((prop.event_id, prop.player, prop.market), []).append(prop)
+    out = []
+    for rows in groups.values():
+        count: dict[float, int] = {}
+        for r in rows:
+            count[r.line] = count.get(r.line, 0) + 1
+        line = min(count, key=lambda x: (-count[x], min(abs(1 / r.over_odds - 1 / r.under_odds) for r in rows if r.line == x)))
+        main = min((r for r in rows if r.line == line), key=_overround)
+        out.append((main, sorted(rows, key=lambda r: (r.line, r.bookmaker))))
+    return out
+
+
+def book_rows(rows: list[PropLine]) -> list[dict]:
+    """Líneas de cada casa en el formato que guarda el análisis."""
+    return [{"bookmaker": r.bookmaker, "line": r.line, "over_odds": r.over_odds, "under_odds": r.under_odds} for r in rows]
+
+
+def parse_all_props(payload: dict) -> list[PropLine]:
+    """Todas las líneas: una por (casa, mercado, jugador, línea) con su más y su menos."""
     pairs: dict[tuple, dict] = {}
     for book in payload.get("bookmakers", []):
         for market in book.get("markets", []):
@@ -82,11 +118,11 @@ def parse_props(payload: dict) -> list[PropLine]:
                 key = (book["key"], market["key"], outcome.get("description"), float(outcome["point"]))
                 pairs.setdefault(key, {})[side] = float(outcome["price"])
 
-    best: dict[tuple, PropLine] = {}
+    out: list[PropLine] = []
     for (bookmaker, market, player, line), prices in pairs.items():
         if "over" not in prices or "under" not in prices:
             continue
-        prop = PropLine(
+        out.append(PropLine(
             event_id=payload.get("id", ""),
             commence_time=payload.get("commence_time", ""),
             home_team=payload.get("home_team", ""),
@@ -97,13 +133,8 @@ def parse_props(payload: dict) -> list[PropLine]:
             over_odds=prices["over"],
             under_odds=prices["under"],
             bookmaker=bookmaker,
-        )
-        key = (market, player, line)
-        current = best.get(key)
-        # Menor margen = mercado más eficiente; es la referencia más honesta.
-        if current is None or _overround(prop) < _overround(current):
-            best[key] = prop
-    return list(best.values())
+        ))
+    return out
 
 
 def _overround(prop: PropLine) -> float:

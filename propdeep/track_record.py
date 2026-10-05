@@ -17,11 +17,13 @@ def grade(side: str, line: float, actual: float) -> str:
     return "won" if went_over == (side == "over") else "lost"
 
 
-def settle(session: Session, bdl: BalldontlieClient) -> list[Prediction]:
-    """Liquida las predicciones pendientes cuyo partido ya tiene estadísticas finales."""
+def settle(session: Session, bdl: BalldontlieClient) -> list:
+    """Liquida las predicciones y los picks pendientes cuyo partido ya tiene estadísticas finales."""
+    from .picks import pending_with_game
+
     settled = []
-    by_game: dict[int, list[Prediction]] = defaultdict(list)
-    for p in pending(session):
+    by_game: dict[int, list] = defaultdict(list)
+    for p in [*pending(session), *pending_with_game(session)]:
         if p.game_id:
             by_game[p.game_id].append(p)
     for game_id, preds in by_game.items():

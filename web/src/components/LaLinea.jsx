@@ -94,7 +94,7 @@ export default function LaLinea() {
   const encima = jugador.partidos.filter((p) => p > linea).length
   const frecuencia = encima / jugador.partidos.length
   const implicita = 1 / cuota
-  const hayVentaja = frecuencia - implicita >= 0.03
+  const masAMenudo = frecuencia > implicita
   const min = Math.min(...jugador.partidos)
   const max = Math.max(...jugador.partidos)
 
@@ -141,19 +141,20 @@ export default function LaLinea() {
             <input id={`${id}-c`} type="range" className="slider" min={1.3} max={3} step={0.05} value={cuota} onChange={cambiar('cuota')} />
           </li>
           <li>
-            <p className="text-sm font-semibold text-muted">3. Lo comparamos con los datos</p>
+            <p className="text-sm font-semibold text-muted">3. Y lo comparas con los datos</p>
             <p className="mt-1 text-lg leading-snug">
               En sus últimos 30 partidos la superó <strong className="tnum">{encima} veces</strong>: el <strong className="tnum">{pct(frecuencia)}</strong>.
             </p>
           </li>
         </ol>
 
-        <div aria-live="polite" className={`relative overflow-hidden p-5 transition-colors duration-300 ${hayVentaja ? 'bg-gold text-black' : 'border-2 border-white text-white'}`}>
-          <p className="display text-[2.4rem] leading-none">{hayVentaja ? 'Hay ventaja' : 'Sin ventaja'}</p>
+        <div aria-live="polite" className={`relative overflow-hidden p-5 transition-colors duration-300 ${masAMenudo ? 'bg-gold text-black' : 'border-2 border-white text-white'}`}>
+          <p className="display text-[2.4rem] leading-none">{masAMenudo ? 'Más que la cuota' : 'Menos que la cuota'}</p>
           <p className="mt-2 leading-snug">
-            {hayVentaja
-              ? `Pasa más a menudo (${pct(frecuencia)}) de lo que la cuota da por hecho (${pct(implicita)}).`
-              : `Los datos (${pct(frecuencia)}) no superan lo que la cuota da por hecho (${pct(implicita)}). Lo correcto es no apostar.`}
+            {masAMenudo
+              ? `En estos partidos pasó más a menudo (${pct(frecuencia)}) de lo que la cuota da por hecho (${pct(implicita)}).`
+              : `En estos partidos pasó menos a menudo (${pct(frecuencia)}) de lo que la cuota da por hecho (${pct(implicita)}).`}
+            {' '}Es un dato, no una garantía: el pasado no asegura el próximo partido y la casa ya tiene en cuenta mucho de esto.
           </p>
         </div>
       </div>

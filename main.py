@@ -1,14 +1,14 @@
-"""API de PropDeep: análisis de player props de la NBA con datos reales e historial público."""
+"""API de PropDeep: análisis de player props de la NBA con datos reales (información orientativa)."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from functools import lru_cache
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from propdeep import accounts, billing, board
+from propdeep import accounts, billing, board, picks
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import Settings, get_settings
@@ -19,8 +19,8 @@ from propdeep.pipeline import Analyzer, scan_day
 from propdeep.track_record import settle, summary
 
 DISCLAIMER = (
-    "Análisis estadístico con fines informativos para mayores de 18 años. "
-    "No es una apuesta segura: apostar implica riesgo de perder dinero."
+    "Información estadística orientativa para mayores de 18 años. No es una recomendación de "
+    "apuesta ni garantiza ganar: apostar implica riesgo de perder dinero."
 )
 
 app = FastAPI(title="PropDeep API", version="2.0.0")
@@ -143,41 +143,27 @@ def scan(game_date: date, max_events: int = 3, top: int = 10, an: Analyzer = Dep
 
 @app.post("/admin/settle", dependencies=[Depends(require_admin)])
 def settle_pending():
+    """Liquida predicciones del modelo y picks con el resultado final de Balldontlie."""
     with session_factory()() as session:
         done = settle(session, bdl_client())
-        return {"settled": [_public(p) for p in done]}
+        return {"settled": [picks.public(p) if isinstance(p, picks.Pick) else _public(p) for p in done]}
 
 
-@app.get("/predictions")
+@app.get("/admin/predictions", dependencies=[Depends(require_admin)])
 def predictions(limit: int = 200):
-    """Historial público completo, ganadas y perdidas.
-
-    Las líneas de la zona de partidos que aún no han empezado salen con su hash pero sin
-    el veredicto (es lo que paga el suscriptor); al empezar el partido se ve todo."""
+    """Veredictos internos del modelo, para seguir midiéndolo. No se enseñan al público:
+    el backtest de 2025-26 no mostró ventaja y la web no los presenta como picks."""
     with session_factory()() as session:
         return [_public(p) for p in all_predictions(session, limit)]
 
 
-@app.get("/track-record")
+@app.get("/admin/track-record", dependencies=[Depends(require_admin)])
 def track_record():
     with session_factory()() as session:
-        return {**summary(all_predictions(session, limit=100_000)), "disclaimer": DISCLAIMER}
+        return summary(all_predictions(session, limit=100_000))
 
 
 def _public(p) -> dict:
-    if p.event_id and not board.is_unlocked(p, subscriber=False):
-        return {
-            "id": p.id,
-            "published_at": p.published_at.isoformat(),
-            "game_date": p.game_date,
-            "player": p.player_name,
-            "stat": p.stat,
-            "line": p.line,
-            "bookmaker": p.bookmaker,
-            "hidden": True,
-            "status": p.status,
-            "content_hash": p.content_hash,
-        }
     return {
         "id": p.id,
         "published_at": p.published_at.isoformat(),
@@ -272,7 +258,7 @@ def verify(req: VerifyRequest):
         if result is None:
             raise HTTPException(400, "El enlace no es válido o ha caducado. Pide otro.")
         user, session_token = result
-        return {"token": session_token, "user": accounts.public_user(user)}
+        return {"token": session_token, "user": _me(user)}
 
 
 @app.post("/auth/logout")
@@ -282,9 +268,18 @@ def do_logout(token: str = Depends(_bearer)):
     return {"ok": True}
 
 
+def _is_admin(user) -> bool:
+    emails = {e.strip().lower() for e in settings().admin_emails.split(",") if e.strip()}
+    return user is not None and user.email in emails
+
+
+def _me(user) -> dict:
+    return {**accounts.public_user(user), "admin": _is_admin(user)}
+
+
 @app.get("/me")
 def me(user=Depends(require_user)):
-    return accounts.public_user(user)
+    return _me(user)
 
 
 @app.delete("/me")
@@ -339,8 +334,13 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(defaul
 
 # --- Zona de partidos ---------------------------------------------------------------------
 
+def _sees_all(user) -> bool:
+    """Suscriptores y el autor de los picks (que necesita ver todas las líneas para elegir)."""
+    return accounts.is_subscriber(user) or _is_admin(user)
+
+
 def _viewer(user) -> dict:
-    return {"logged_in": user is not None, "subscriber": accounts.is_subscriber(user)}
+    return {"logged_in": user is not None, "subscriber": _sees_all(user)}
 
 
 @app.get("/board")
@@ -362,7 +362,7 @@ def get_board(game_date: date | None = None, user=Depends(current_user)):
 @app.get("/board/games/{event_id}")
 def get_game(event_id: str, user=Depends(current_user)):
     """Jugadores del partido con sus líneas. Bloqueadas: sin veredicto ni probabilidades."""
-    subscriber = accounts.is_subscriber(user)
+    subscriber = _sees_all(user)
     with session_factory()() as session:
         lines = board.board_lines(session, event_id=event_id)
         if not lines:
@@ -382,7 +382,7 @@ def get_line(line_id: int, user=Depends(current_user)):
         p = session.get(Prediction, line_id)
         if p is None or not p.event_id:
             raise HTTPException(404, "Línea no encontrada")
-        if not board.is_unlocked(p, accounts.is_subscriber(user)):
+        if not board.is_unlocked(p, _sees_all(user)):
             raise HTTPException(402, "Este informe es para suscriptores")
         return {**board.line_detail(p), "disclaimer": DISCLAIMER}
 
@@ -391,13 +391,82 @@ def get_line(line_id: int, user=Depends(current_user)):
 def build_board(game_date: date, max_events: int | None = None, an: Analyzer = Depends(analyzer)):
     """Analiza todas las props de la jornada y las publica en la zona de partidos.
 
-    Consume créditos de The Odds API (4 por partido en "eu"). Claude solo redacta las
-    líneas con ventaja; el resto lleva el informe de plantilla para no disparar el coste."""
+    Consume créditos de The Odds API (4 por partido en "eu"). Para no disparar el coste,
+    Claude redacta los puntos de cada jugador y las líneas gratis; el resto, plantilla."""
     results = scan_day(an, odds_client(), game_date, max_events=max_events)
 
-    def report(a):
-        return write_report(a, claude_client(), settings().anthropic_model) if a.side else template_report(a)
+    def report(a, meta):
+        if a.stat == "pts" or meta.get("free"):
+            return write_report(a, claude_client(), settings().anthropic_model, books=meta.get("books"))
+        return template_report(a)
 
     with session_factory()() as session:
         published = board.publish_board(session, results, game_date, settings().free_lines_per_day, report)
         return {"published": len(published), "free": sum(1 for p in published if p.free)}
+
+
+# --- Ejemplo de mis picks con ayuda de la página ------------------------------------------
+
+PICKS_WARNING = "Resultados pasados no garantizan nada; a largo plazo es muy difícil ganar a la casa."
+
+
+def require_pick_admin(user=Depends(current_user), x_admin_token: str = Header(default="")):
+    token = settings().admin_token
+    if _is_admin(user) or (token and x_admin_token == token):
+        return
+    raise HTTPException(403, "Solo el autor puede publicar picks")
+
+
+class PickRequest(BaseModel):
+    line_id: int | None = None
+    player_name: str | None = Field(default=None, max_length=120)
+    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m)$")
+    line: float | None = None
+    side: str = Field(pattern="^(over|under)$")
+    odds: float = Field(gt=1.0, le=50)
+    bookmaker: str = Field(max_length=60)
+    stake: float = Field(default=1.0, gt=0, le=10)
+    note: str | None = Field(default=None, max_length=280)
+    commence_time: datetime | None = None
+    home_team: str | None = Field(default=None, max_length=60)
+    away_team: str | None = Field(default=None, max_length=60)
+
+
+class SettleRequest(BaseModel):
+    actual: float | None = None
+    void: bool = False
+
+
+@app.get("/picks")
+def list_picks():
+    """Todos los picks de Gonza, ganados y perdidos, con su resumen. Público."""
+    with session_factory()() as session:
+        ps = picks.all_picks(session)
+        return {
+            "summary": picks.summary(ps),
+            "picks": [picks.public(p) for p in ps],
+            "warning": PICKS_WARNING,
+            "disclaimer": DISCLAIMER,
+        }
+
+
+@app.post("/picks", status_code=201, dependencies=[Depends(require_pick_admin)])
+def create_pick(req: PickRequest):
+    """Publica un pick antes del partido. Después no se puede editar ni borrar."""
+    with session_factory()() as session:
+        try:
+            return picks.public(picks.create(session, req.model_dump()))
+        except picks.PickError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/picks/{pick_id}/settle", dependencies=[Depends(require_pick_admin)])
+def settle_pick(pick_id: int, req: SettleRequest):
+    """Resultado de un pick que no sale de la zona de partidos (los demás se liquidan solos)."""
+    with session_factory()() as session:
+        try:
+            return picks.public(picks.settle_manual(session, pick_id, req.actual, req.void))
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except picks.PickError as exc:
+            raise HTTPException(409, str(exc)) from exc

@@ -127,3 +127,35 @@ def test_prob_over_accounts_for_right_skew():
     assert prob_over("pts", 20.0, 8.0, 19.5) < 0.5
     assert prob_over("reb", 8.0, 3.0, 7.5) == pytest.approx(prob_over("reb", 8.0, 3.0, 7.0))
     assert 0 < prob_over("ast", 2.0, 1.0, 1.5) < 1
+
+
+def test_hit_rates_and_last_season():
+    from propdeep.model import compute_splits
+
+    values = [30.0, 20.0, 30.0, 20.0, 30.0, 10.0, 10.0, 10.0, 10.0, 10.0, 40.0, 40.0]
+    t = compute_trends(values, [34.0] * len(values), 25.5, season_games=10, last_season_games=2)
+    assert t.hit_rate_last5 == 0.6 and t.hit_rate_last10 == 0.3 and t.hit_rate_season == 0.3
+    assert t.hit_rate_last_season == 1.0 and t.last_season_games == 2
+
+    s = compute_splits([30.0, 20.0, 10.0], [True, False, True], [14, 3, 14], 25.5, opponent_id=14)
+    assert s["home"] == {"games": 2, "avg": 20.0, "hit_rate": 0.5}
+    assert s["away"]["games"] == 1 and s["vs_opponent"]["games"] == 2
+    assert compute_splits([30.0], [None], [None], 25.5, None)["vs_opponent"]["games"] == 0
+
+
+def test_side_of_reads_home_and_opponent():
+    from propdeep.pipeline import _side_of
+
+    row = {"team": {"id": 7}, "game": {"home_team_id": 7, "visitor_team_id": 14}}
+    assert _side_of(row) == (True, 14)
+    assert _side_of({"team": {"id": 14}, "game": {"home_team_id": 7, "visitor_team_id": 14}}) == (False, 7)
+    assert _side_of({"team": {"id": 7}, "game": {}}) == (None, None)
+
+
+def test_main_line_is_the_one_most_books_offer():
+    from propdeep.clients.odds import PropLine, main_lines
+
+    mk = lambda line, o, u, book: PropLine("ev1", "", "", "", "Luka Doncic", "player_points", line, o, u, book)
+    rows = [mk(28.5, 1.9, 1.9, "a"), mk(28.5, 1.85, 1.95, "b"), mk(27.5, 1.7, 2.1, "c")]
+    [(main, books)] = main_lines(rows)
+    assert main.line == 28.5 and main.bookmaker == "a" and len(books) == 3

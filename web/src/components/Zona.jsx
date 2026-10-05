@@ -1,7 +1,7 @@
 import { ArrowClockwise, ArrowLeft, Eye, LockSimple } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { useModo } from '../lib/tablero'
-import { LADO, PRECIO, useIrASuscribir } from '../lib/zona'
+import { PRECIO, useIrASuscribir } from '../lib/zona'
 
 
 // Contenedor de las páginas de la zona: fondo opaco para leer datos sin ruido.
@@ -18,7 +18,7 @@ export function Volver({ to, children }) {
 }
 
 // Franja que avisa de que los datos son de demostración, con el cambio de vista.
-export function AvisoDemo() {
+export function AvisoDemo({ sinVista = false }) {
   const { demo, demoSuscriptor } = useModo()
   if (!demo) return null
   const opcion = (valor, texto, activa) => (
@@ -34,37 +34,28 @@ export function AvisoDemo() {
   return (
     <div role="note" className="mb-8 flex flex-col gap-3 bg-gold px-4 py-3 text-black sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm font-medium">
-        <strong className="font-extrabold">Demostración.</strong> Jugadores y números inventados para enseñar cómo se verá la zona. Los análisis reales empiezan el 20 de octubre.
+        <strong className="font-extrabold">Demostración.</strong> Jugadores y números inventados para enseñar cómo se verá. Los datos reales empiezan el 20 de octubre.
       </p>
-      <div className="flex shrink-0 items-center gap-1 self-start border-2 border-black sm:self-auto" aria-label="Ver como">
+      {!sinVista && <div className="flex shrink-0 items-center gap-1 self-start border-2 border-black sm:self-auto" aria-label="Ver como">
         <Eye aria-hidden className="ml-2 size-4" />
         {opcion('1', 'Gratis', !demoSuscriptor)}
         {opcion('suscriptor', 'Suscriptor', demoSuscriptor)}
-      </div>
+      </div>}
     </div>
   )
 }
 
-// Etiqueta del veredicto de una línea.
-export function Veredicto({ linea, grande = false }) {
-  const tam = grande ? 'px-3 py-1.5 text-xl' : 'px-2 py-0.5 text-sm'
-  if (!linea.side) return <span className={`display inline-block border border-white/40 text-muted ${tam}`}>Sin ventaja</span>
-  return <span className={`display inline-block bg-gold text-black ${tam}`}>{LADO[linea.side]} de {String(linea.line).replace('.', ',')}</span>
-}
-
-// Tres barras: alta, media o baja.
-export function Confianza({ nivel, conTexto = true }) {
-  const n = { alta: 3, media: 2, baja: 1 }[nivel] || 0
-  if (!n) return null
+// Porcentaje de partidos por encima de la línea, con su muestra.
+export function Tasa({ valor, partidos, etiqueta, grande = false }) {
+  const tono = valor == null ? 'text-muted' : 'text-white'
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-muted" title={`Confianza ${nivel}`}>
-      <span aria-hidden className="flex items-end gap-0.5">
-        {[1, 2, 3].map((i) => (
-          <span key={i} className={`w-1 ${i <= n ? 'bg-gold' : 'bg-white/20'}`} style={{ height: `${4 + i * 3}px` }} />
-        ))}
-      </span>
-      {conTexto ? `Confianza ${nivel}` : <span className="sr-only">Confianza {nivel}</span>}
-    </span>
+    <div className={grande ? 'border border-white/25 px-4 py-3' : ''}>
+      <p className="text-xs text-muted">{etiqueta}</p>
+      <p className={`display tnum leading-none ${tono} ${grande ? 'mt-1 text-[2.4rem]' : 'text-[1.4rem]'}`}>
+        {valor == null ? '-' : `${Math.round(valor * 100)} %`}
+      </p>
+      {grande && partidos != null && <p className="tnum mt-1 text-xs text-muted">{partidos} {partidos === 1 ? 'partido' : 'partidos'}</p>}
+    </div>
   )
 }
 
@@ -85,7 +76,8 @@ export function Muro({ bloqueadas, compacto = false }) {
         {bloqueadas ? `${bloqueadas} líneas más en este partido` : 'Todas las líneas, todos los días'}
       </p>
       <p className="mt-3 max-w-xl text-muted">
-        Con la suscripción ves el veredicto, la probabilidad y el informe completo de cada línea. Prueba {PRECIO.prueba} días gratis;
+        Con la suscripción ves el análisis de cada línea: proyección, cuántas veces superó la línea, casa y fuera, el rival,
+        las líneas de cada casa y el informe. Prueba {PRECIO.prueba} días gratis;
         después {PRECIO.mensual} € al mes o {PRECIO.anual} € al año. Cancelas cuando quieras.
       </p>
       <Link to={destino} className="btn btn-gold mt-5 h-12 px-6 text-lg">
@@ -120,8 +112,8 @@ export function AvisoResponsable() {
   return (
     <p className="mt-12 flex items-start gap-3 border-t border-line pt-6 text-sm leading-relaxed text-muted">
       <span className="tnum mt-0.5 shrink-0 border border-white px-1.5 py-0.5 text-xs font-bold text-white">+18</span>
-      Análisis estadístico con fines informativos. No es una apuesta segura: apostar implica riesgo de perder dinero. Juega solo
-      con lo que puedas permitirte perder.
+      Información estadística orientativa, sin garantía de ningún resultado: no es una recomendación de apuesta. Apostar implica
+      riesgo de perder dinero y a largo plazo es muy difícil ganar a la casa. Juega solo con lo que puedas permitirte perder.
     </p>
   )
 }

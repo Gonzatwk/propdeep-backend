@@ -36,6 +36,13 @@ class Trends:
     minutes_season: float | None
     hit_rate_last10: float | None  # % de los últimos 10 por encima de la línea
     recent_values: list[float]
+    hit_rate_last5: float | None = None
+    hit_rate_season: float | None = None
+    season_games: int = 0
+    hit_rate_last_season: float | None = None
+    last_season_games: int = 0
+    # Desglose en casa, fuera y contra el rival del día (últimas dos temporadas).
+    splits: dict | None = None
 
 
 @dataclass
@@ -73,13 +80,21 @@ class Analysis:
         return asdict(self)
 
 
-def compute_trends(values: list[float], minutes: list[float], line: float, season_games: int) -> Trends:
+def _avg(xs: list[float]) -> float | None:
+    return round(mean(xs), 2) if xs else None
+
+
+def hit_rate(values: list[float], line: float) -> float | None:
+    """Fracción de partidos por encima de la línea (None sin partidos)."""
+    return round(sum(v > line for v in values) / len(values), 3) if values else None
+
+
+def compute_trends(values: list[float], minutes: list[float], line: float, season_games: int,
+                   last_season_games: int | None = None) -> Trends:
     """values y minutes ordenados del partido más reciente al más antiguo."""
-
-    def avg(xs: list[float]) -> float | None:
-        return round(mean(xs), 2) if xs else None
-
+    avg = _avg
     last10 = values[:10]
+    prev = values[season_games:season_games + last_season_games] if last_season_games else []
     season_minutes = minutes[:season_games]
     use_minutes = season_games >= MIN_SEASON_GAMES_FOR_MINUTES
     return Trends(
@@ -92,9 +107,28 @@ def compute_trends(values: list[float], minutes: list[float], line: float, seaso
         # Solo minutos de esta temporada: mezclar la anterior daba proporciones absurdas.
         minutes_last5=avg(season_minutes[:5]) if use_minutes else None,
         minutes_season=avg(season_minutes) if season_games else avg(minutes),
-        hit_rate_last10=round(sum(v > line for v in last10) / len(last10), 3) if last10 else None,
+        hit_rate_last10=hit_rate(last10, line),
         recent_values=values[:10],
+        hit_rate_last5=hit_rate(values[:5], line),
+        hit_rate_season=hit_rate(values[:season_games], line),
+        season_games=season_games,
+        hit_rate_last_season=hit_rate(prev, line),
+        last_season_games=len(prev),
     )
+
+
+def compute_splits(values: list[float], home: list[bool | None], opponents: list[int | None],
+                   line: float, opponent_id: int | None) -> dict:
+    """Media y % sobre la línea en casa, fuera y contra el rival del día."""
+
+    def block(xs: list[float]) -> dict:
+        return {"games": len(xs), "avg": _avg(xs), "hit_rate": hit_rate(xs, line)}
+
+    return {
+        "home": block([v for v, h in zip(values, home) if h is True]),
+        "away": block([v for v, h in zip(values, home) if h is False]),
+        "vs_opponent": block([v for v, o in zip(values, opponents) if opponent_id is not None and o == opponent_id]),
+    }
 
 
 def project(stat: str, trends: Trends, context: Context) -> float:

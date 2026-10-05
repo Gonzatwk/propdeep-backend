@@ -2,12 +2,14 @@ import { ArrowRight, LockSimple } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  AvisoDemo, AvisoResponsable, Bloqueada, Cargando, Confianza, Fallo, Muro, Pagina, Veredicto, Volver,
+  AvisoDemo, AvisoResponsable, Bloqueada, Cargando, Fallo, Muro, Pagina, Volver,
 } from '../../components/Zona'
 import { STAT, useIrASuscribir } from '../../lib/zona'
 import { abrev, corto, diaLargo, hora } from '../../lib/equipos'
 import { useModo, usePartido } from '../../lib/tablero'
-import { fmtCuota, fmtNum, fmtPct } from '../../format'
+import { fmtCuota, fmtNum } from '../../format'
+
+const pc = (v) => (v == null ? '-' : `${Math.round(v * 100)} %`)
 
 const FILTROS = [['todas', 'Todas'], ['pts', 'Puntos'], ['reb', 'Rebotes'], ['ast', 'Asistencias'], ['fg3m', 'Triples']]
 
@@ -20,18 +22,19 @@ function Linea({ l, enlace, eventId }) {
         {l.free && <span className="bg-white px-1.5 text-[0.7rem] font-bold text-black uppercase">Gratis</span>}
       </span>
       <span className="display tnum mt-1 block text-[2.4rem] leading-none">{fmtNum(l.line)}</span>
-      <span className="tnum mt-1 block text-xs text-muted">Más {fmtCuota(l.over_odds)} · Menos {fmtCuota(l.under_odds)}</span>
-      <span className="mt-3 flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="tnum mt-1 block text-xs text-muted">
+        Más {fmtCuota(l.over_odds)} · Menos {fmtCuota(l.under_odds)} · {l.books_count} {l.books_count === 1 ? 'casa' : 'casas'}
+      </span>
+      <span className="mt-3 block min-h-7">
         {l.locked ? <Bloqueada /> : (
-          <>
-            <Veredicto linea={l} />
-            {l.side && <Confianza nivel={l.confidence} conTexto={false} />}
-          </>
+          <span className="tnum block text-sm">
+            <span className="text-muted">Proyección</span> <strong className="font-semibold">{fmtNum(l.projection)}</strong>
+            <span className="mt-1 block text-xs text-muted">
+              Superó la línea: <span className="text-white">{pc(l.hit_rates?.last5)}</span> últ. 5 · <span className="text-white">{pc(l.hit_rates?.last10)}</span> últ. 10
+            </span>
+          </span>
         )}
       </span>
-      {!l.locked && l.side && (
-        <span className="tnum mt-2 block text-xs text-muted">Nuestra prob. {fmtPct(l.probability)} · ventaja {fmtPct(l.edge)}</span>
-      )}
     </>
   )
   const clase = 'group block h-full border bg-black p-4 transition-colors'
@@ -43,10 +46,10 @@ function Linea({ l, enlace, eventId }) {
     )
   }
   return (
-    <Link to={enlace(`/partidos/${encodeURIComponent(eventId)}/${l.id}`)} className={`${clase} ${l.side ? 'border-gold/60 hover:border-gold' : 'border-white/25 hover:border-white'}`}>
+    <Link to={enlace(`/partidos/${encodeURIComponent(eventId)}/${l.id}`)} className={`${clase} border-white/25 hover:border-gold`}>
       {cuerpo}
       <span className="mt-3 flex items-center gap-1 text-sm font-semibold text-gold opacity-80 group-hover:opacity-100">
-        Ver informe <ArrowRight aria-hidden className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+        Ver análisis <ArrowRight aria-hidden className="size-3.5 transition-transform group-hover:translate-x-0.5" />
       </span>
     </Link>
   )
@@ -57,7 +60,6 @@ export default function Partido() {
   const { enlace } = useModo()
   const { cargando, datos, error, reintentar } = usePartido(eventId)
   const [filtro, setFiltro] = useState('todas')
-  const [soloVentaja, setSoloVentaja] = useState(false)
 
   if (cargando) return <Pagina><Cargando filas={4} /></Pagina>
   if (error || !datos) {
@@ -73,7 +75,7 @@ export default function Partido() {
 
   const { game: g, lines, viewer } = datos
   const bloqueadas = lines.filter((l) => l.locked).length
-  const visibles = lines.filter((l) => (filtro === 'todas' || l.stat === filtro) && (!soloVentaja || (!l.locked && l.side)))
+  const visibles = lines.filter((l) => filtro === 'todas' || l.stat === filtro)
   const jugadores = [...new Set(visibles.map((l) => l.player))]
 
   return (
@@ -92,7 +94,7 @@ export default function Partido() {
       {!viewer.subscriber && bloqueadas > 0 && (
         <p className="mt-6 flex items-start gap-2 text-muted">
           <LockSimple aria-hidden weight="bold" className="mt-1 size-4 shrink-0 text-gold" />
-          <span>Ves el veredicto de {lines.length - bloqueadas} de {lines.length} líneas. Las demás se abren con la suscripción o cuando empieza el partido.</span>
+          <span>Ves el análisis de {lines.length - bloqueadas} de {lines.length} líneas. Las demás se abren con la suscripción o cuando empieza el partido.</span>
         </p>
       )}
 
@@ -108,10 +110,6 @@ export default function Partido() {
             {t}
           </button>
         ))}
-        <label className="ml-auto inline-flex cursor-pointer items-center gap-2 text-sm font-semibold">
-          <input type="checkbox" checked={soloVentaja} onChange={(e) => setSoloVentaja(e.target.checked)} className="size-4 accent-[var(--gold)]" />
-          Solo con ventaja
-        </label>
       </div>
 
       <div className="mt-8 space-y-10">

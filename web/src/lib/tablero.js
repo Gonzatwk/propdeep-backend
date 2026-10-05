@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { API_URL } from '../config'
-import { demoLinea, demoPartido, demoTablero } from '../data/demo'
+import { demoLinea, demoPartido, demoPicks, demoTablero } from '../data/demo'
 import { useCuenta } from './cuenta'
 import { api } from './sesion'
 
@@ -49,3 +49,5 @@ export const usePartido = (id) =>
 
 export const useLinea = (id) =>
   useCarga((s) => demoLinea(id, s), `/board/lines/${encodeURIComponent(id)}`, [id])
+
+export const usePicks = (version = 0) => useCarga(demoPicks, '/picks', [version])
