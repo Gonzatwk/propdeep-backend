@@ -29,6 +29,34 @@ público de todas las predicciones.
 | POST | `/admin/publish` | Analiza y publica en el historial (cabecera `x-admin-token`) |
 | GET | `/admin/scan?game_date=AAAA-MM-DD` | Analiza las props de la jornada con The Odds API |
 | POST | `/admin/settle` | Liquida las pendientes con el resultado real |
+| POST | `/admin/board?game_date=AAAA-MM-DD` | Analiza todas las props de la jornada y las publica en la zona de partidos |
+| GET | `/admin/metrics` | Embudo de validación: pruebas iniciadas, pago tras la prueba, bajas |
+| GET | `/board` | Partidos de la jornada (por defecto, la próxima con partidos por jugar) |
+| GET | `/board/games/{event_id}` | Jugadores y líneas del partido; las bloqueadas van sin veredicto |
+| GET | `/board/lines/{id}` | Informe completo (402 si hace falta suscripción) |
+| POST | `/auth/login` · `/auth/verify` · `/auth/logout` | Acceso por enlace mágico, solo con el correo |
+| GET / DELETE | `/me` | Estado de la cuenta / borrar la cuenta |
+| POST | `/billing/checkout` · `/billing/portal` | Stripe Checkout (prueba de 7 días) y portal de cliente |
+| POST | `/stripe/webhook` | Único sitio donde se da o quita el acceso |
+| POST | `/waitlist` | Correos del formulario de aviso de la landing |
+
+## Zona de partidos y muro de pago
+
+- Cada línea de `/admin/board` se publica en el historial con su hash. Gratis se ven
+  `FREE_LINES_PER_DAY` líneas por jornada (la de más ventaja de los primeros partidos); el
+  resto solo con suscripción. Al empezar el partido, todo se abre y `/predictions` lo enseña.
+- Claude solo redacta las líneas con ventaja; las de "sin ventaja" llevan la plantilla.
+- La sesión es un token en la cabecera `Authorization: Bearer` (sin cookies).
+
+## Stripe (suscripción)
+
+1. En Stripe, crea un producto "PropDeep" con dos precios recurrentes: 15 € al mes y 120 € al año.
+   Copia sus id (`price_...`) en `STRIPE_PRICE_MONTHLY` y `STRIPE_PRICE_YEARLY`.
+2. `STRIPE_SECRET_KEY`: la clave secreta (`sk_test_...` para probar).
+3. Webhook a `https://TU-API/stripe/webhook` con los eventos `checkout.session.completed`,
+   `customer.subscription.created`, `customer.subscription.updated` y
+   `customer.subscription.deleted`. Su "signing secret" va en `STRIPE_WEBHOOK_SECRET`.
+4. Activa el portal de cliente (Settings > Billing > Customer portal) para que puedan cancelar.
 
 Lo publicado no se edita: cada predicción guarda un hash SHA-256 de su contenido.
 
