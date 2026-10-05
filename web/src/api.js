@@ -22,7 +22,7 @@ export function aEntrada(p) {
   return {
     id: p.id,
     publicado: p.published_at,
-    partido: p.game_date ? new Date(`${p.game_date}T12:00:00`).toLocaleDateString('es-ES') : '—',
+    partido: p.game_date ? new Date(`${p.game_date}T12:00:00`).toLocaleDateString('es-ES') : '-',
     jugador: p.player,
     prop: statLabel(p.stat),
     lado: LADO[p.side] || '',
