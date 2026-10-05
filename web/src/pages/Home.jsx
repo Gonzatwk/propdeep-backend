@@ -1,21 +1,17 @@
+import { ArrowRight, CalendarBlank, ChartLineUp, Clock, Crosshair, Scales, ShieldCheck, Thermometer, UsersThree } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import Cta from '../components/Cta'
+import EdgeCalculator from '../components/EdgeCalculator'
 import { CONTACT_EMAIL } from '../config'
 import { FECHA_EJEMPLOS, informesLanding } from '../data/informes'
 import { fmtNum, fmtPct } from '../format'
 
-const bloques = [
-  ['Tendencias', 'Últimos 5, 10 y 20 partidos, minutos y uso. ¿El jugador está por encima o por debajo de su media?'],
-  ['Matchup', 'Cómo defiende el rival esa estadística y en qué posición. Ritmo de juego esperado.'],
-  ['Factores situacionales', 'Back-to-back, viajes, bajas del equipo y del rival, riesgo de paliza.'],
-  ['Línea del mercado', 'Nuestra probabilidad estimada frente a la que implica la cuota. La diferencia es la ventaja, si existe.'],
-  ['Nivel de confianza', 'Alto, medio o bajo, explicado en una frase. Sin ventaja, el análisis lo dice.'],
-]
-
-const planes = [
-  { nombre: 'Preventa', precio: '9 €', sufijo: 'el primer mes', texto: 'Plazas de fundador. Acceso desde el primer partido de la temporada. Reembolso completo si no te convence.', destacado: true },
-  { nombre: 'Mensual', precio: '15 €', sufijo: '/mes', texto: 'Después del primer mes. Cancelas cuando quieras.' },
-  { nombre: 'Anual', precio: '120 €', sufijo: '/año', texto: 'Equivale a 10 €/mes.' },
+const preguntas = [
+  [ChartLineUp, 'Tendencias', 'Últimos 5, 10 y 20 partidos, minutos y uso. ¿El jugador está por encima o por debajo de su media?'],
+  [Crosshair, 'Matchup', 'Cómo defiende el rival esa estadística y en qué posición. Ritmo de juego esperado.'],
+  [UsersThree, 'Factores situacionales', 'Back-to-back, viajes, bajas del equipo y del rival, riesgo de paliza.'],
+  [Scales, 'Línea del mercado', 'Nuestra probabilidad estimada frente a la que implica la cuota. La diferencia es la ventaja, si existe.'],
+  [Thermometer, 'Nivel de confianza', 'Alto, medio o bajo, explicado en una frase. Sin ventaja, el análisis lo dice.'],
 ]
 
 const faqs = [
@@ -27,124 +23,109 @@ const faqs = [
   ['¿Cómo funciona el reembolso?', 'Si el primer mes no te convence, nos escribes y te devolvemos los 9 €. Sin preguntas.'],
 ]
 
-function Section({ id, title, children, className = '' }) {
-  return (
-    <section id={id} className={`scroll-mt-20 px-4 py-16 sm:py-20 ${className}`}>
-      <div className="mx-auto max-w-6xl">
-        {title && <h2 className="mb-8 text-3xl font-bold tracking-tight text-white sm:text-4xl">{title}</h2>}
-        {children}
-      </div>
-    </section>
-  )
-}
+const anatomia = ['Jugador y partido', 'Prop y línea', 'Cuota', 'Probabilidad implícita', 'Probabilidad estimada', 'Ventaja', 'Confianza', 'Tres razones']
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden px-4 pt-16 pb-20 sm:pt-24">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.18),transparent_60%)]" />
-      <div className="relative mx-auto max-w-3xl text-center">
-        <p className="mb-4 text-sm font-semibold uppercase tracking-widest text-brand">Análisis estadístico · NBA</p>
-        <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-6xl">
-          Player props de la NBA, con números y no con corazonadas.
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
-          Análisis estadístico en español de cada prop: tendencias, matchup, contexto y comparación con la línea
-          del mercado. Y cuando no hay ventaja, te lo decimos.
-        </p>
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Cta>Reserva tu primer mes por 9 €</Cta>
-          <a href="#ejemplos" className="rounded-xl border border-slate-700 px-6 py-3 font-semibold text-slate-200 hover:border-slate-500">
-            Ver un informe de ejemplo
-          </a>
+    <section className="relative overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute -top-40 right-[-10%] size-[42rem] rounded-full bg-[radial-gradient(closest-side,var(--accent-soft),transparent)]" />
+      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pt-12 pb-20 sm:px-6 md:pt-20 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16 lg:pb-28">
+        <div>
+          <h1 className="rise text-[2.6rem] leading-[1.02] font-semibold tracking-[-0.035em] sm:text-6xl">
+            Player props de la NBA, con números y no con corazonadas.
+          </h1>
+          <p className="rise mt-6 max-w-[34rem] text-lg leading-relaxed text-muted" style={{ '--i': 1 }}>
+            Análisis estadístico en español de cada prop: tendencias, matchup, contexto y comparación con la línea del mercado. Y cuando no hay ventaja, te lo decimos.
+          </p>
+          <div className="rise mt-9 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 2 }}>
+            <Cta>Reservar por 9 €</Cta>
+            <a href="#ejemplos" className="group inline-flex items-center gap-1.5 font-medium">
+              Ver un informe de ejemplo
+              <ArrowRight aria-hidden className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </a>
+          </div>
+          <p className="rise mt-5 text-sm text-muted" style={{ '--i': 3 }}>
+            Reembolso completo si no te convence. Solo mayores de 18 años.
+          </p>
         </div>
-        <p className="mt-4 text-sm text-slate-400">Reembolso completo si no te convence. Solo mayores de 18 años.</p>
-        <p className="mx-auto mt-6 w-fit rounded-full border border-brand/40 bg-brand/10 px-4 py-1.5 text-sm text-orange-200">
-          Los primeros análisis se publican el 20 de octubre, con el inicio de la temporada regular.
-        </p>
+        <div className="rise" style={{ '--i': 2 }}>
+          <EdgeCalculator />
+        </div>
       </div>
     </section>
   )
 }
 
-function QueIncluye() {
+function ComoFunciona() {
   return (
-    <Section id="analisis" title="Cinco preguntas antes de cada prop" className="bg-slate-900/50">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {bloques.map(([t, d], i) => (
-          <div key={t} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <div className="mb-3 text-sm font-bold text-brand">{i + 1}</div>
-            <h3 className="mb-2 font-semibold text-white">{t}</h3>
-            <p className="text-sm text-slate-400">{d}</p>
-          </div>
-        ))}
+    <section id="como-funciona" className="border-t border-line">
+      <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 md:py-28 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <h2 className="text-3xl font-semibold tracking-[-0.03em] sm:text-[2.6rem] sm:leading-[1.08]">
+            Cinco preguntas antes de cada prop
+          </h2>
+          <p className="mt-5 max-w-sm text-lg leading-relaxed text-muted">
+            Todo en español y explicado, para que entiendas el porqué y decidas tú.
+          </p>
+        </div>
+        <ul className="grid gap-x-10 gap-y-10 sm:grid-cols-2">
+          {preguntas.map(([Icono, titulo, texto], i) => (
+            <li key={titulo} className={i === preguntas.length - 1 ? 'sm:col-span-2 sm:max-w-md' : ''}>
+              <Icono aria-hidden weight="duotone" className="size-7 text-accent" />
+              <h3 className="mt-4 text-lg font-semibold">{titulo}</h3>
+              <p className="mt-2 leading-relaxed text-muted">{texto}</p>
+            </li>
+          ))}
+        </ul>
       </div>
-      <p className="mt-8 text-lg text-slate-300">Todo en español y explicado, para que entiendas el porqué y decidas tú.</p>
-    </Section>
+    </section>
   )
 }
 
 function SinVentaja() {
   return (
-    <Section id="distinto">
-      <div className="grid items-center gap-10 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl">Sin ventaja, no hay jugada</h2>
-          <p className="text-lg text-slate-300">
-            La mayoría de servicios te dan picks todos los días, haya valor o no. Nosotros comparamos nuestra
-            probabilidad con la de la cuota, y si la diferencia no compensa, lo decimos claramente: "sin ventaja".
-            Algunos días habrá pocas jugadas, y eso también es información.
-          </p>
-        </div>
-        <ul className="space-y-3">
+    <section className="bg-surface">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
+        <h2 className="max-w-4xl text-4xl font-semibold tracking-[-0.04em] sm:text-6xl sm:leading-[1.02]">
+          Sin ventaja, <span className="text-accent">no hay jugada.</span>
+        </h2>
+        <p className="mt-8 max-w-2xl text-lg leading-relaxed text-muted">
+          La mayoría de servicios te dan picks todos los días, haya valor o no. Nosotros comparamos nuestra probabilidad con
+          la de la cuota, y si la diferencia no compensa, lo decimos claramente: "sin ventaja". Algunos días habrá pocas
+          jugadas, y eso también es información.
+        </p>
+        <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
           {[
             'Probabilidades, no promesas.',
             'Todas las predicciones publicadas, las ganadas y las perdidas.',
             'Hecho por un apostador que aplica el mismo criterio con su propio dinero.',
           ].map((t) => (
-            <li key={t} className="flex gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 text-slate-200">
-              <span className="text-brand">●</span>
-              {t}
-            </li>
+            <p key={t} className="bg-surface p-6 text-[1.05rem] font-medium leading-snug">{t}</p>
           ))}
-        </ul>
+        </div>
       </div>
-    </Section>
+    </section>
   )
 }
 
 function Dato({ label, value }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="font-semibold text-white">{value}</dd>
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="tnum mt-0.5 font-mono font-semibold">{value}</dd>
     </div>
   )
 }
 
 function TarjetaInforme({ informe }) {
-  if (informe.pendiente) {
-    return (
-      <div className="flex min-h-72 flex-col rounded-2xl border-2 border-dashed border-slate-700 p-6">
-        <span className="mb-3 w-fit rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300">
-          {informe.tipo}
-        </span>
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <p className="font-semibold text-slate-300">Informe en preparación</p>
-          <p className="mt-2 text-sm text-slate-500">
-            Llega el 20 de octubre, con datos reales del primer día de temporada. Aquí no inventamos ejemplos.
-          </p>
-        </div>
-      </div>
-    )
-  }
   const ventaja = informe.probEstimada - informe.probImplicita
   return (
-    <article className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900 p-6">
-      <span className="mb-3 w-fit rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300">{informe.tipo}</span>
-      <h3 className="text-xl font-bold text-white">{informe.jugador}</h3>
-      <p className="text-sm text-slate-400">{informe.partido}</p>
-      <p className="mt-3 font-semibold text-brand">{informe.prop}</p>
-      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+    <article className="flex flex-col rounded-3xl border border-line bg-surface p-6">
+      <p className="text-sm text-muted">{informe.tipo}</p>
+      <h3 className="mt-3 text-xl font-semibold">{informe.jugador}</h3>
+      <p className="text-sm text-muted">{informe.partido}</p>
+      <p className="mt-3 font-semibold text-accent">{informe.prop}</p>
+      <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
         <Dato label="Cuota" value={fmtNum(informe.cuota)} />
         <Dato label="Prob. implícita" value={fmtPct(informe.probImplicita)} />
         <Dato label="Prob. estimada" value={fmtPct(informe.probEstimada)} />
@@ -152,98 +133,159 @@ function TarjetaInforme({ informe }) {
         <Dato label="Confianza" value={informe.confianza} />
         <Dato label="Veredicto" value={informe.veredicto} />
       </dl>
-      <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-300">
+      <ul className="mt-5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-muted">
         {informe.porque.map((p) => <li key={p}>{p}</li>)}
       </ul>
       {informe.informe && (
-        <details className="mt-4 text-sm text-slate-300">
-          <summary className="cursor-pointer font-semibold text-brand">Leer el informe completo</summary>
-          <p className="mt-2 whitespace-pre-line">{informe.informe}</p>
+        <details className="mt-5 text-sm">
+          <summary className="cursor-pointer font-semibold text-accent">Leer el informe completo</summary>
+          <p className="mt-2 whitespace-pre-line leading-relaxed text-muted">{informe.informe}</p>
         </details>
       )}
     </article>
   )
 }
 
-function Ejemplos() {
+function EjemplosPendientes() {
   return (
-    <Section id="ejemplos" title="Así es un análisis de PropDeep" className="bg-slate-900/50">
-      <p className="-mt-4 mb-8 max-w-3xl text-lg text-slate-300">
-        Tres ejemplos reales{FECHA_EJEMPLOS ? ` con datos del ${new Date(FECHA_EJEMPLOS).toLocaleDateString('es-ES')}` : ''}.
-        Uno con ventaja, uno sin ventaja y uno con confianza baja, para que veas cómo razonamos en cada caso.
-      </p>
-      <div className="grid gap-6 md:grid-cols-3">
-        {informesLanding.map((inf) => <TarjetaInforme key={inf.tipo} informe={inf} />)}
+    <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+      <div className="rounded-3xl border border-line bg-surface p-7 sm:p-9">
+        <CalendarBlank aria-hidden weight="duotone" className="size-8 text-accent" />
+        <p className="mt-5 text-2xl font-semibold tracking-tight">Llegan el 20 de octubre</p>
+        <p className="mt-3 max-w-md leading-relaxed text-muted">
+          Los publicaremos con datos reales del primer día de la temporada regular. Aquí no inventamos ejemplos.
+        </p>
+        <p className="mt-8 text-sm font-medium">Cada informe incluye:</p>
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {anatomia.map((a) => (
+            <li key={a} className="rounded-full border border-line px-3 py-1 text-sm text-muted">{a}</li>
+          ))}
+        </ul>
       </div>
-    </Section>
+      <ul className="grid gap-4">
+        {informesLanding.map((inf) => (
+          <li key={inf.tipo} className="flex items-center justify-between gap-4 rounded-2xl border border-dashed border-line px-5 py-4">
+            <span className="font-medium">{inf.tipo}</span>
+            <Clock aria-label="En preparación" className="size-5 shrink-0 text-muted" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function Ejemplos() {
+  const reales = informesLanding.filter((i) => !i.pendiente)
+  return (
+    <section id="ejemplos" className="border-t border-line">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
+        <h2 className="text-3xl font-semibold tracking-[-0.03em] sm:text-[2.6rem]">Así es un análisis de PropDeep</h2>
+        <p className="mt-5 mb-12 max-w-2xl text-lg leading-relaxed text-muted">
+          Tres ejemplos reales{FECHA_EJEMPLOS ? ` con datos del ${new Date(FECHA_EJEMPLOS).toLocaleDateString('es-ES')}` : ''}:
+          uno con ventaja, uno sin ventaja y uno con confianza baja, para que veas cómo razonamos en cada caso.
+        </p>
+        {reales.length ? (
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {reales.map((inf) => <TarjetaInforme key={inf.tipo} informe={inf} />)}
+          </div>
+        ) : (
+          <EjemplosPendientes />
+        )}
+      </div>
+    </section>
   )
 }
 
 function Historial() {
   return (
-    <Section id="historial">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 sm:p-10">
-        <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">Nuestro historial, a la vista</h2>
-        <p className="max-w-3xl text-lg text-slate-300">
-          Publicamos cada análisis antes del partido, con su fecha y hora, y no se edita después. Cuando termina el
-          partido marcamos el resultado, gane o pierda. El historial empieza con el primer partido de la temporada
-          2026-27, y desde ese día podrás ver el acierto y el rendimiento acumulado.
-        </p>
-        <p className="mt-4 text-sm text-slate-400">
-          Mostraremos: análisis publicados, porcentaje de acierto, rendimiento con apuesta fija de 1 unidad y
-          rendimiento por nivel de confianza.
-        </p>
-        <Link to="/historial" className="mt-6 inline-block rounded-xl border border-slate-700 px-6 py-3 font-semibold text-slate-200 hover:border-slate-500">
-          Ver historial completo
-        </Link>
+    <section className="border-t border-line">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 md:py-28 lg:grid-cols-2 lg:gap-20">
+        <div>
+          <h2 className="text-3xl font-semibold tracking-[-0.03em] sm:text-[2.6rem]">Nuestro historial, a la vista</h2>
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
+            Publicamos cada análisis antes del partido, con su fecha y hora, y no se edita después. Cuando termina el
+            partido marcamos el resultado, gane o pierda.
+          </p>
+          <Link to="/historial" className="btn btn-ghost mt-8 px-5 py-3">
+            Ver historial completo <ArrowRight aria-hidden className="size-4" />
+          </Link>
+        </div>
+        <div className="rounded-3xl border border-line p-7">
+          <div className="flex items-center gap-3 text-sm text-muted">
+            <ShieldCheck aria-hidden weight="duotone" className="size-5 text-accent" />
+            Empieza con el primer partido de la temporada 2026-27
+          </div>
+          <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-7">
+            {['Análisis publicados', 'Porcentaje de acierto', 'Rendimiento a 1 unidad fija', 'Rendimiento por confianza'].map((m) => (
+              <div key={m}>
+                <dt className="text-sm text-muted">{m}</dt>
+                <dd className="tnum mt-1 font-mono text-2xl font-semibold text-muted/70">-</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </div>
-    </Section>
+    </section>
   )
 }
 
 function Precio() {
   return (
-    <Section id="precio" title="Reserva tu plaza para el inicio de la temporada" className="bg-slate-900/50">
-      <div className="grid gap-6 md:grid-cols-3">
-        {planes.map((p) => (
-          <div
-            key={p.nombre}
-            className={`flex flex-col rounded-2xl border p-6 ${p.destacado ? 'border-brand bg-brand/10' : 'border-slate-800 bg-slate-900'}`}
-          >
-            <h3 className="font-semibold text-slate-200">{p.nombre}</h3>
-            <p className="mt-3">
-              <span className="text-4xl font-extrabold text-white">{p.precio}</span>{' '}
-              <span className="text-slate-400">{p.sufijo}</span>
+    <section id="precio" className="bg-surface">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
+        <h2 className="max-w-2xl text-3xl font-semibold tracking-[-0.03em] sm:text-[2.6rem] sm:leading-[1.08]">
+          Reserva tu plaza para el inicio de la temporada
+        </h2>
+        <div className="mt-12 grid gap-5 lg:grid-cols-[1.25fr_1fr]">
+          <div className="relative overflow-hidden rounded-3xl bg-bg p-8 shadow-[var(--shadow)] ring-1 ring-accent/50 sm:p-10">
+            <div aria-hidden className="pointer-events-none absolute -right-24 -bottom-24 size-80 rounded-full bg-[radial-gradient(closest-side,var(--accent-soft),transparent)]" />
+            <p className="font-semibold text-accent">Preventa de fundadores</p>
+            <p className="mt-4 flex items-baseline gap-3">
+              <span className="tnum text-6xl font-semibold tracking-[-0.04em]">9 €</span>
+              <span className="text-muted">el primer mes</span>
             </p>
-            <p className="mt-4 flex-1 text-sm text-slate-300">{p.texto}</p>
-            {p.destacado && <Cta className="mt-6 w-full">Reservar por 9 €</Cta>}
+            <p className="mt-5 max-w-md leading-relaxed text-muted">
+              Acceso desde el primer partido de la temporada. Reembolso completo si no te convence.
+            </p>
+            <Cta className="mt-8">Reservar por 9 €</Cta>
           </div>
-        ))}
+          <dl className="grid gap-px self-start overflow-hidden rounded-3xl border border-line bg-line">
+            <div className="bg-surface p-7">
+              <dt className="text-sm text-muted">Mensual, después del primer mes</dt>
+              <dd className="mt-2"><span className="tnum text-3xl font-semibold">15 €</span> <span className="text-muted">/mes</span></dd>
+              <dd className="mt-1 text-sm text-muted">Cancelas cuando quieras.</dd>
+            </div>
+            <div className="bg-surface p-7">
+              <dt className="text-sm text-muted">Anual</dt>
+              <dd className="mt-2"><span className="tnum text-3xl font-semibold">120 €</span> <span className="text-muted">/año</span></dd>
+              <dd className="mt-1 text-sm text-muted">Equivale a 10 € al mes.</dd>
+            </div>
+          </dl>
+        </div>
+        <p className="mt-8 max-w-3xl text-sm leading-relaxed text-muted">
+          Pago seguro con Stripe. Puedes cancelar en cualquier momento desde tu cuenta. Si el primer mes no te convence,
+          escríbenos a <a className="underline hover:text-ink" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> y te devolvemos los 9 €.
+        </p>
       </div>
-      <p className="mt-6 text-sm text-slate-400">
-        Pago seguro con Stripe. Puedes cancelar en cualquier momento desde tu cuenta. Si el primer mes no te
-        convence, escríbenos{CONTACT_EMAIL ? <> a <a className="underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></> : ''} y te
-        devolvemos los 9 €.
-      </p>
-    </Section>
+    </section>
   )
 }
 
 function Faq() {
   return (
-    <Section id="faq" title="Preguntas frecuentes">
-      <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800">
-        {faqs.map(([q, a]) => (
-          <details key={q} className="group p-5">
-            <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-white">
-              {q}
-              <span className="ml-4 text-brand transition group-open:rotate-45">+</span>
-            </summary>
-            <p className="mt-3 text-slate-300">{a}</p>
-          </details>
-        ))}
+    <section id="faq" className="border-t border-line">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
+        <h2 className="text-3xl font-semibold tracking-[-0.03em] sm:text-[2.6rem]">Preguntas frecuentes</h2>
+        <dl className="mt-12 grid gap-x-16 gap-y-10 md:grid-cols-2">
+          {faqs.map(([q, a]) => (
+            <div key={q}>
+              <dt className="text-lg font-semibold">{q}</dt>
+              <dd className="mt-2 max-w-[60ch] leading-relaxed text-muted">{a}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
-    </Section>
+    </section>
   )
 }
 
@@ -251,7 +293,7 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <QueIncluye />
+      <ComoFunciona />
       <SinVentaja />
       <Ejemplos />
       <Historial />

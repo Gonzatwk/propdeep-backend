@@ -1,28 +1,20 @@
+import { ArrowUpRight } from '@phosphor-icons/react'
 import { STRIPE_PAYMENT_LINK } from '../config'
 
 // Botón de reserva. Sin enlace de Stripe configurado, se muestra desactivado.
-export default function Cta({ children, className = '' }) {
-  const base =
-    'inline-flex items-center justify-center rounded-xl px-6 py-3 text-base font-semibold transition'
+export default function Cta({ children = 'Reservar por 9 €', size = 'lg', className = '' }) {
+  const pad = size === 'sm' ? 'px-4 py-2 text-sm' : 'px-6 py-3.5 text-base'
   if (!STRIPE_PAYMENT_LINK) {
     return (
-      <span
-        aria-disabled="true"
-        title="El enlace de pago aún no está configurado"
-        className={`${base} cursor-not-allowed bg-slate-700 text-slate-300 ${className}`}
-      >
+      <span aria-disabled="true" className={`btn ${pad} cursor-not-allowed bg-surface-2 text-muted ${className}`}>
         Preventa abre muy pronto
       </span>
     )
   }
   return (
-    <a
-      href={STRIPE_PAYMENT_LINK}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`${base} bg-brand text-slate-950 hover:bg-brand-dark ${className}`}
-    >
+    <a href={STRIPE_PAYMENT_LINK} target="_blank" rel="noopener noreferrer" className={`btn btn-primary ${pad} ${className}`}>
       {children}
+      <ArrowUpRight weight="bold" aria-hidden className="size-4" />
     </a>
   )
 }

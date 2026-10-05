@@ -1,16 +1,20 @@
-import { Link } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
+import Cta from './Cta'
 import Logo from './Logo'
+
+const link = 'rounded-full px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink'
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+    <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo />
-        <nav className="flex items-center gap-4 text-sm text-slate-300 sm:gap-6">
-          <a href="/#ejemplos" className="hidden hover:text-white sm:inline">Ejemplos</a>
-          <Link to="/historial" className="hover:text-white">Historial</Link>
-          <a href="/#precio" className="hover:text-white">Precio</a>
-          <span className="rounded-md border border-slate-600 px-2 py-0.5 text-xs font-bold text-slate-200">+18</span>
+        <nav aria-label="Principal" className="flex items-center gap-1">
+          <a href="/#como-funciona" className={`${link} hidden md:inline-block`}>Cómo funciona</a>
+          <NavLink to="/historial" className={({ isActive }) => `${link} ${isActive ? 'text-ink' : ''}`}>Historial</NavLink>
+          <a href="/#precio" className={`${link} hidden sm:inline-block`}>Precio</a>
+          <span className="mx-1 rounded-md border border-line px-1.5 py-0.5 font-mono text-xs font-semibold" title="Solo mayores de 18 años">+18</span>
+          <Cta size="sm" className="ml-1 hidden sm:inline-flex">Reservar</Cta>
         </nav>
       </div>
     </header>
