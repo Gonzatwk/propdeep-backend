@@ -59,6 +59,8 @@ seguir midiéndolo (`/admin/predictions`).
   modelo; el resto lleva la plantilla.
 - Los correos de `ADMIN_EMAILS` ven todas las líneas y pueden publicar picks desde la web.
 - La sesión es un token en la cabecera `Authorization: Bearer` (sin cookies).
+- El enlace de acceso sale por Resend (`RESEND_API_KEY`, `MAIL_FROM` en un dominio verificado) o
+  por SMTP. Railway bloquea el SMTP en los planes Free, Trial y Hobby, así que allí va con Resend.
 
 ## Chat (suscriptores)
 
