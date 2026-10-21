@@ -61,10 +61,14 @@ def tick(session: Session, analyzer, odds, bdl, settings, report: Callable, now:
         from .pipeline import scan_day
 
         log.warning("Jornada automática: analizando %s partido(s) del %s, tarda unos minutos", len(due), day)
-        results = scan_day(analyzer, odds, day, events=due, log=log.info)
+    # Partido a partido, por hora de inicio: el primero sale en la web sin esperar al resto.
+    for event in sorted(due, key=lambda e: e.get("commence_time") or ""):
+        name = f"{event.get('away_team')} @ {event.get('home_team')}"
+        results = scan_day(analyzer, odds, day, events=[event], log=log.info)
         published = board.publish_board(session, results, day, settings.free_lines_per_day, report)
-        done["published"] = len(published)
-        done["events"] = [f"{e.get('away_team')} @ {e.get('home_team')}" for e in due]
+        done["published"] += len(published)
+        done["events"].append(name)
+        log.warning("Jornada automática: %s, %s líneas publicadas", name, len(published))
     return done
 
 
