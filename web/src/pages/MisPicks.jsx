@@ -7,7 +7,7 @@ import { useCuenta } from '../lib/cuenta'
 import { abrev } from '../lib/equipos'
 import { api } from '../lib/sesion'
 import { useModo, usePicks } from '../lib/tablero'
-import { LADO, nombreCasa, STAT } from '../lib/zona'
+import { nombreCasa, resultado, seleccion } from '../lib/zona'
 import { fmtCuota, fmtNum, fmtPct, fmtUnidades } from '../format'
 
 const AVISO = 'Resultados pasados no garantizan nada; a largo plazo es muy difícil ganar a la casa.'
@@ -69,13 +69,13 @@ function Pick({ p, admin, onCambio }) {
           </p>
           <p className="mt-1 text-xl font-semibold">{p.player}</p>
           <p className="tnum mt-0.5">
-            {STAT[p.stat]}: <strong>{LADO[p.side]} de {fmtNum(p.line)}</strong> · cuota {fmtCuota(p.odds)} en {nombreCasa(p.bookmaker)}
+            <strong>{seleccion(p)}</strong> · cuota {fmtCuota(p.odds)} en {nombreCasa(p.bookmaker)}
             {p.stake !== 1 && <> · {fmtNum(p.stake)} u</>}
           </p>
         </div>
         <div className="text-right">
           <span className={`inline-block px-2 py-0.5 text-sm font-bold uppercase ${clase}`}>{texto}</span>
-          {p.actual != null && <p className="tnum mt-1 text-sm text-muted">Hizo {fmtNum(p.actual)}</p>}
+          {p.actual != null && <p className="tnum mt-1 text-sm text-muted first-letter:uppercase">{resultado(p)}</p>}
         </div>
       </div>
       {p.note && <p className="mt-2 max-w-2xl text-sm text-muted">«{p.note}»</p>}
@@ -122,10 +122,10 @@ function Parlay({ p }) {
           return (
             <li key={l.id} className="tnum flex flex-wrap items-center gap-x-3 text-sm">
               <span className="font-semibold">{l.player}</span>
-              <span>{STAT[l.stat]}: {LADO[l.side]} de {fmtNum(l.line)} · {fmtCuota(l.odds)}</span>
+              <span>{seleccion(l)} · {fmtCuota(l.odds)}</span>
               {l.away_team && l.home_team && <span className="text-muted">{abrev(l.away_team)} @ {abrev(l.home_team)}</span>}
               <span className={`px-1.5 text-xs font-bold uppercase ${c}`}>{t}</span>
-              {l.actual != null && <span className="text-muted">hizo {fmtNum(l.actual)}</span>}
+              {l.actual != null && <span className="text-muted">{resultado(l)}</span>}
             </li>
           )
         })}

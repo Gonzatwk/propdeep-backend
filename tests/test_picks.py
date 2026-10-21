@@ -127,3 +127,51 @@ def test_parlay_settlement_rules():
         x.status = "lost"
         picks.refresh_parlays(s)
         assert q.status == "lost" and q.odds == 3.0
+
+
+def test_moneyline_shows_on_the_board_and_settles_by_score(api, gonza):
+    api.c.post(f"/admin/board?game_date={DAY}", headers=ADMIN)
+    game = next(g for g in api.c.get(f"/board?game_date={DAY}").json()["games"] if g["event_id"] == "ev1")
+    assert game["moneyline"]["best"]["home"] == {"bookmaker": "bookB", "odds": 1.65}
+    assert game["moneyline"]["best"]["away"]["odds"] == 2.4
+    assert len(api.c.get("/board/games/ev1").json()["game"]["moneyline"]["books"]) == 2
+
+    ml = {"stat": "ml", "event_id": "ev1", "side": "over", "odds": 2.4, "bookmaker": "bookA"}
+    assert api.c.post("/picks", json={**ml, "team": "Boston Celtics"}, headers=gonza).status_code == 422
+    r = api.c.post("/picks", json={**ml, "team": "Los Angeles Lakers"}, headers=gonza).json()
+    assert r["player"] == "Los Angeles Lakers" and r["stat"] == "ml" and r["auto_settle"]
+    # En una combinada junto a un prop.
+    line = next(x for x in api.c.get("/board/games/ev1", headers=gonza).json()["lines"] if x["stat"] == "pts")
+    legs = [{**ml, "team": "Dallas Mavericks", "odds": 1.65}, {"line_id": line["id"], "side": "over", "odds": 1.9}]
+    assert api.c.post("/parlays", json={"legs": legs, "bookmaker": "bookB"}, headers=gonza).status_code == 201
+
+    bdl = main.bdl_client()
+    bdl.scores[999] = (110, 104)  # gana Dallas (local)
+    bdl.final_stats[999] = [stat_row(DAY, 40.0, game_id=999)]
+    api.c.post("/admin/settle", headers=ADMIN)
+    body = api.c.get("/picks").json()
+    assert body["picks"][0]["status"] == "lost" and body["picks"][0]["actual"] == -6
+    assert body["parlays"][0]["status"] == "won"
+
+
+def test_moneyline_paper_bet_links_its_game_later(api, gonza):
+    from propdeep.moneyline import refresh
+
+    with main.session_factory()() as session:
+        refresh(session, api.odds, DAY)  # partido sin props publicados: sin game_id aún
+    ml = {"stat": "ml", "event_id": "ev2", "team": "Miami Heat", "side": "over", "odds": 2.4,
+          "bookmaker": "bookA", "stake": 20}
+    assert api.c.post("/paper/bets", json=ml, headers=gonza).status_code == 201
+    with main.session_factory()() as session:
+        [p] = picks.pending_ml_unlinked(session)
+        p.commence_time = datetime.now(timezone.utc) - timedelta(hours=3)
+        session.commit()
+    bdl = main.bdl_client()
+    bdl.games_on = lambda day: [{"id": 555, "home_team": {"full_name": "Boston Celtics"},
+                                 "visitor_team": {"full_name": "Miami Heat"}}]
+    bdl.game = lambda gid: {"id": gid, "status": "Final", "home_team": {"full_name": "Boston Celtics"},
+                            "visitor_team": {"full_name": "Miami Heat"}, "home_team_score": 99,
+                            "visitor_team_score": 101}
+    api.c.post("/admin/settle", headers=ADMIN)
+    state = api.c.get("/paper", headers=gonza).json()
+    assert state["bank"]["profit"] == 28.0

@@ -1,11 +1,11 @@
 import { PaperPlaneTilt, Stack, X } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { combinada, cuotaTotal, useBoletoPaper, useCombinada } from '../lib/combinada'
+import { claveLeg, combinada, cuotaTotal, legParaEnviar, useBoletoPaper, useCombinada } from '../lib/combinada'
 import { abrev } from '../lib/equipos'
 import { api } from '../lib/sesion'
-import { LADO, STAT } from '../lib/zona'
-import { fmtCuota, fmtNum } from '../format'
+import { seleccion } from '../lib/zona'
+import { fmtCuota } from '../format'
 
 const campo = 'mt-1 block h-11 w-full border border-white/30 bg-black px-3 text-white focus:border-gold focus:outline-none'
 const num = (v) => Number(String(v).replace(',', '.'))
@@ -24,7 +24,7 @@ export default function Combinada({ onHecho }) {
         <p className="flex items-center gap-2 font-semibold text-white"><Stack aria-hidden className="size-5 text-gold" /> Combinadas</p>
         <p className="mt-2">
           Para hacer una, entra en el análisis de cada línea en <Link to="/partidos" className="text-gold underline">Partidos</Link> y pulsa
-          «Añadir a combinada». Cuando tengas dos o más, la publicas aquí.
+          «Añadir a combinada» (o en las cuotas a ganador de cada partido). Cuando tengas dos o más, la publicas aquí.
         </p>
       </div>
     )
@@ -41,7 +41,7 @@ export default function Combinada({ onHecho }) {
           odds: f.odds ? num(f.odds) : null,
           stake: num(f.stake) || 1,
           note: f.note || null,
-          legs: legs.map(({ line_id, side, line, odds }) => ({ line_id, side, line, odds })),
+          legs: legs.map(legParaEnviar),
         },
       })
       combinada.vaciar()
@@ -60,11 +60,11 @@ export default function Combinada({ onHecho }) {
       </p>
       <ul className="mt-4 divide-y divide-line border-y border-line">
         {legs.map((l) => (
-          <li key={l.line_id} className="flex items-center justify-between gap-3 py-3">
+          <li key={claveLeg(l)} className="flex items-center justify-between gap-3 py-3">
             <span>
               <span className="font-semibold">{l.player}</span>
               <span className="tnum block text-sm text-muted">
-                {STAT[l.stat]}: {LADO[l.side]} de {fmtNum(l.line)} · {fmtCuota(l.odds)}
+                {seleccion(l)} · {fmtCuota(l.odds)}
                 {l.away_team && l.home_team && <> · {abrev(l.away_team)} @ {abrev(l.home_team)}</>}
               </span>
             </span>

@@ -1,5 +1,6 @@
 import { ArrowRight, CalendarBlank, ChartLineUp, ChatCircleText } from '@phosphor-icons/react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { MoneylineCorta } from '../../components/Moneyline'
 import { AvisoDemo, AvisoResponsable, Cargando, Fallo, Muro, Pagina } from '../../components/Zona'
 import { abrev, corto, hora, jornada } from '../../lib/equipos'
 import { useModo, useTablero } from '../../lib/tablero'
@@ -33,6 +34,7 @@ function TarjetaPartido({ g, enlace, i }) {
         <span className="row-start-1 flex flex-col items-end gap-1 text-right text-sm sm:row-start-auto">
           <span className="tnum font-semibold">{g.lines} {g.lines === 1 ? 'línea' : 'líneas'} · {g.players} {g.players === 1 ? 'jugador' : 'jugadores'}</span>
           {g.free_lines > 0 && <span className="tnum text-muted">{g.free_lines} {g.free_lines === 1 ? 'línea gratis' : 'líneas gratis'}</span>}
+          <MoneylineCorta g={g} />
           {g.started && <span className="text-xs font-semibold text-gold uppercase">Empezado</span>}
         </span>
         <ArrowRight aria-hidden className="col-start-2 row-start-2 size-6 justify-self-end text-muted transition-transform group-hover:translate-x-1 group-hover:text-gold sm:col-start-auto sm:row-start-auto" />

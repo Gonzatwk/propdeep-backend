@@ -4,6 +4,8 @@ import { Link, useParams } from 'react-router-dom'
 import {
   AvisoDemo, AvisoResponsable, Bloqueada, Cargando, Fallo, Muro, Pagina, Volver,
 } from '../../components/Zona'
+import Moneyline from '../../components/Moneyline'
+import { useCuenta } from '../../lib/cuenta'
 import { STAT, useIrASuscribir } from '../../lib/zona'
 import { abrev, corto, diaLargo, hora } from '../../lib/equipos'
 import { useModo, usePartido } from '../../lib/tablero'
@@ -57,7 +59,8 @@ function Linea({ l, enlace, eventId }) {
 
 export default function Partido() {
   const { eventId } = useParams()
-  const { enlace } = useModo()
+  const { demo, enlace } = useModo()
+  const { usuario } = useCuenta()
   const { cargando, datos, error, reintentar } = usePartido(eventId)
   const [filtro, setFiltro] = useState('todas')
 
@@ -90,6 +93,8 @@ export default function Partido() {
           {corto(g.away_team)} en {corto(g.home_team)} · <span className="first-letter:uppercase">{diaLargo(g.commence_time)}</span>, {hora(g.commence_time)}
         </p>
       </header>
+
+      <Moneyline g={g} autor={usuario?.admin && !demo} />
 
       {!viewer.subscriber && bloqueadas > 0 && (
         <p className="mt-6 flex items-start gap-2 text-muted">

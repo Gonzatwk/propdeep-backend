@@ -114,6 +114,9 @@ Con `AUTO_JORNADA`, cada `AUTO_EVERY_MINUTES` el servidor liquida lo terminado y
 partidos que empiezan en menos de `AUTO_HOURS_BEFORE` horas y aún no están publicados (cada
 partido una vez: mercados x regiones créditos, 8 con `us,eu`). La jornada cambia a las 06:00 UTC.
 Una línea por jugador y estadística: si la casa la mueve, se queda la primera.
+También trae las cuotas a ganador (moneyline) de toda la jornada como mucho cada hora (1 crédito
+por región, 2 con `us,eu`). Se ven en Partidos y en cada partido, y se pueden apostar en Mis picks,
+Paper bets y combinadas (`stat: "ml"`, `event_id`, `team`); se liquidan solas con el marcador final.
 
 ## En local
 

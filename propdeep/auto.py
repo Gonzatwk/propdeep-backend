@@ -5,6 +5,7 @@ Mientras el servidor está encendido, cada `AUTO_EVERY_MINUTES`:
 2. Mira los partidos de la jornada en The Odds API (la lista de partidos no gasta créditos) y
    analiza los que empiezan en menos de `AUTO_HOURS_BEFORE` horas y aún no están publicados.
    Cada partido se analiza una sola vez (mercados x regiones créditos).
+3. Refresca las cuotas a ganador de la jornada como mucho cada hora (1 crédito por región).
 """
 from __future__ import annotations
 
@@ -15,9 +16,9 @@ from typing import Callable
 
 from sqlalchemy.orm import Session
 
-from . import board
+from . import board, moneyline
 from .db import pending
-from .picks import pending_with_game
+from .picks import pending_ml_unlinked, pending_with_game
 from .track_record import settle
 
 log = logging.getLogger("propdeep.auto")
@@ -51,10 +52,15 @@ def tick(session: Session, analyzer, odds, bdl, settings, report: Callable, now:
     """Una vuelta: liquidar y publicar lo que toque. Devuelve qué ha hecho."""
     now = now or datetime.now(timezone.utc)
     done = {"settled": 0, "published": 0, "events": []}
-    if pending(session) or pending_with_game(session):
+    if pending(session) or pending_with_game(session) or pending_ml_unlinked(session):
         done["settled"] = len(settle(session, bdl))
 
     day = jornada(now)
+    try:
+        moneyline.refresh(session, odds, day, now)
+    except Exception:  # noqa: BLE001 - sin cuotas a ganador se sigue publicando
+        session.rollback()
+        log.exception("No se pudieron traer las cuotas a ganador")
     due = due_events(odds.events_on(day), board.published_events(session, day.isoformat()), now,
                      settings.auto_hours_before)
     if due:

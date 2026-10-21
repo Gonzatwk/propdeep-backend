@@ -16,7 +16,10 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from .db import Base, Prediction, content_hash
 from .track_record import grade
 
-STATS = ("pts", "reb", "ast", "fg3m")
+STATS = ("pts", "reb", "ast", "fg3m", "ml")
+# Moneyline (a ganador): player_name guarda el equipo, la línea es 0 y `actual` es la
+# diferencia de puntos del equipo elegido, así que grade("over", 0, margen) lo liquida.
+ML = "ml"
 
 
 class Pick(Base):
@@ -90,8 +93,28 @@ def create(session: Session, data: dict, now: datetime | None = None) -> Pick:
     return pick
 
 
+def _moneyline(session: Session, data: dict) -> dict:
+    """Apuesta a ganador: el partido sale de las cuotas guardadas (`event_id`) y el equipo de `team`."""
+    from .moneyline import GameOdds
+
+    team = (data.get("team") or data.get("player_name") or "").strip()
+    if data.get("event_id"):
+        g = session.get(GameOdds, data["event_id"])
+        if g is None:
+            raise PickError("No hay cuotas a ganador de ese partido")
+        linked = session.scalars(select(Prediction.game_id).where(
+            Prediction.event_id == g.event_id, Prediction.game_id.is_not(None)).limit(1)).first()
+        data = {**data, "game_date": g.game_date, "commence_time": _aware(g.commence_time),
+                "home_team": g.home_team, "away_team": g.away_team, "game_id": linked}
+    if team not in (data.get("home_team"), data.get("away_team")):
+        raise PickError("Elige uno de los dos equipos del partido")
+    return {**data, "player_name": team, "stat": ML, "line": 0.0, "side": "over", "player_id": None}
+
+
 def _build(session: Session, data: dict, now: datetime) -> Pick:
-    if data.get("line_id") is not None:
+    if data.get("stat") == ML:
+        data = _moneyline(session, data)
+    elif data.get("line_id") is not None:
         p = session.get(Prediction, data["line_id"])
         if p is None or not p.event_id:
             raise PickError("Esa línea no está en la zona de partidos")
@@ -238,7 +261,14 @@ def settle_manual(session: Session, pick_id: int, actual: float | None, void: bo
 
 
 def pending_with_game(session: Session) -> list[Pick]:
-    stmt = select(Pick).where(Pick.status == "pending", Pick.game_id.is_not(None), Pick.player_id.is_not(None))
+    stmt = select(Pick).where(Pick.status == "pending", Pick.game_id.is_not(None),
+                              Pick.player_id.is_not(None) | (Pick.stat == ML))
+    return list(session.scalars(stmt))
+
+
+def pending_ml_unlinked(session: Session) -> list[Pick]:
+    """Apuestas a ganador sin partido de Balldontlie (el partido no tenía props publicados)."""
+    stmt = select(Pick).where(Pick.status == "pending", Pick.stat == ML, Pick.game_id.is_(None))
     return list(session.scalars(stmt))
 
 
@@ -288,7 +318,7 @@ def public(p: Pick) -> dict:
         "note": p.note,
         "status": p.status,
         "actual": p.actual,
-        "auto_settle": p.game_id is not None and p.player_id is not None,
+        "auto_settle": p.stat == ML or (p.game_id is not None and p.player_id is not None),
         "content_hash": p.content_hash,
     }
 

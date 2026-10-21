@@ -3,11 +3,11 @@ import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import BankChart from '../components/BankChart'
 import { AvisoResponsable, Cargando, Fallo, Pagina } from '../components/Zona'
-import { boletoPaper, cuotaTotal, useBoletoPaper } from '../lib/combinada'
+import { boletoPaper, claveLeg, cuotaTotal, legParaEnviar, useBoletoPaper } from '../lib/combinada'
 import { useCuenta } from '../lib/cuenta'
 import { abrev } from '../lib/equipos'
 import { conSigno, euros, usePaper } from '../lib/paper'
-import { LADO, nombreCasa, STAT } from '../lib/zona'
+import { nombreCasa, resultado, seleccion } from '../lib/zona'
 import { fmtCuota, fmtNum, fmtPct } from '../format'
 
 const campo = 'mt-1 block h-11 w-full border border-white/30 bg-black px-3 text-white focus:border-gold focus:outline-none'
@@ -91,7 +91,7 @@ function Boleto({ sugerido, accion }) {
         method: 'POST',
         body: {
           bookmaker: f.bookmaker, odds: f.odds ? num(f.odds) : null, stake,
-          legs: legs.map(({ line_id, side, line, odds: o }) => ({ line_id, side, line, odds: o })),
+          legs: legs.map(legParaEnviar),
         },
       })
       boletoPaper.vaciar()
@@ -109,8 +109,8 @@ function Boleto({ sugerido, accion }) {
       </p>
       <ul className="mt-3 divide-y divide-line border-y border-line">
         {legs.map((l) => (
-          <li key={l.line_id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-            <span><strong>{l.player}</strong> · {STAT[l.stat]} {LADO[l.side]} de {fmtNum(l.line)} · {fmtCuota(l.odds)}</span>
+          <li key={claveLeg(l)} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+            <span><strong>{l.player}</strong> · {seleccion(l)} · {fmtCuota(l.odds)}</span>
             <button type="button" onClick={() => boletoPaper.quitar(l)} className="p-1.5 text-muted hover:text-gold" aria-label={`Quitar ${l.player}`}>
               <X aria-hidden className="size-4" />
             </button>
@@ -149,7 +149,7 @@ function Boleto({ sugerido, accion }) {
 function Seleccion({ l }) {
   return (
     <span className="tnum">
-      <strong className="font-semibold">{l.player}</strong> · {STAT[l.stat]} {LADO[l.side]} de {fmtNum(l.line)}
+      <strong className="font-semibold">{l.player}</strong> · {seleccion(l)}
       {l.away_team && l.home_team && <span className="text-muted"> · {abrev(l.away_team)} @ {abrev(l.home_team)}</span>}
     </span>
   )
@@ -178,7 +178,7 @@ function Apuesta({ b, accion, ahora }) {
               <Seleccion l={l} />
               {combinada && <span className="text-sm text-muted">{fmtCuota(l.odds)}</span>}
               {combinada && l.status !== 'pending' && <span className={`px-1 text-[0.7rem] font-bold uppercase ${(ESTADO[l.status] || ESTADO.pending)[1]}`}>{(ESTADO[l.status] || ESTADO.pending)[0]}</span>}
-              {l.actual != null && <span className="text-sm text-muted">hizo {fmtNum(l.actual)}</span>}
+              {l.actual != null && <span className="text-sm text-muted">{resultado(l)}</span>}
             </li>
           ))}
         </ul>

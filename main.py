@@ -9,7 +9,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Re
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from propdeep import accounts, auto, billing, board, chat, paper, picks
+from propdeep import accounts, auto, billing, board, chat, moneyline, paper, picks
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import Settings, get_settings
@@ -370,12 +370,14 @@ def get_board(game_date: date | None = None, user=Depends(current_user)):
     with session_factory()() as session:
         day = game_date.isoformat() if game_date else board.default_date(session)
         lines = board.board_lines(session, game_date=day) if day else []
+        games = board.games(lines)
+        ml = moneyline.for_events(session, [g["event_id"] for g in games])
         return {
             "game_date": day,
             "dates": board.board_dates(session),
             "free_lines_per_day": settings().free_lines_per_day,
             "viewer": _viewer(user),
-            "games": board.games(lines),
+            "games": [{**g, "moneyline": moneyline.public(ml.get(g["event_id"]))} for g in games],
             "disclaimer": DISCLAIMER,
         }
 
@@ -389,7 +391,8 @@ def get_game(event_id: str, user=Depends(current_user)):
         if not lines:
             raise HTTPException(404, "Partido no encontrado")
         return {
-            "game": board.game_header(lines[0]),
+            "game": {**board.game_header(lines[0]),
+                     "moneyline": moneyline.public(session.get(moneyline.GameOdds, event_id), full=True)},
             "viewer": _viewer(user),
             "lines": [board.line_summary(p, board.is_unlocked(p, subscriber)) for p in lines],
             "disclaimer": DISCLAIMER,
@@ -438,6 +441,10 @@ def build_board(game_date: date, max_events: int | None = None, an: Analyzer = D
     results = scan_day(an, odds_client(), game_date, max_events=max_events)
     with session_factory()() as session:
         published = board.publish_board(session, results, game_date, settings().free_lines_per_day, board_report)
+        try:
+            moneyline.refresh(session, odds_client(), game_date, force=True)
+        except Exception:  # noqa: BLE001 - las cuotas a ganador son un extra
+            session.rollback()
         return {"published": len(published), "free": sum(1 for p in published if p.free)}
 
 
@@ -466,7 +473,7 @@ def require_pick_admin(user=Depends(current_user), x_admin_token: str = Header(d
 class PickRequest(BaseModel):
     line_id: int | None = None
     player_name: str | None = Field(default=None, max_length=120)
-    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m)$")
+    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m|ml)$")
     line: float | None = None
     side: str = Field(pattern="^(over|under)$")
     odds: float = Field(gt=1.0, le=50)
@@ -476,18 +483,24 @@ class PickRequest(BaseModel):
     commence_time: datetime | None = None
     home_team: str | None = Field(default=None, max_length=60)
     away_team: str | None = Field(default=None, max_length=60)
+    # Moneyline (stat "ml"): el partido de las cuotas a ganador y el equipo elegido.
+    event_id: str | None = Field(default=None, max_length=64)
+    team: str | None = Field(default=None, max_length=60)
 
 
 class ParlayLeg(BaseModel):
     line_id: int | None = None
     player_name: str | None = Field(default=None, max_length=120)
-    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m)$")
+    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m|ml)$")
     line: float | None = None
     side: str = Field(pattern="^(over|under)$")
     odds: float = Field(gt=1.0, le=50)
     commence_time: datetime | None = None
     home_team: str | None = Field(default=None, max_length=60)
     away_team: str | None = Field(default=None, max_length=60)
+    # Moneyline (stat "ml"): el partido de las cuotas a ganador y el equipo elegido.
+    event_id: str | None = Field(default=None, max_length=64)
+    team: str | None = Field(default=None, max_length=60)
 
 
 class ParlayRequest(BaseModel):
