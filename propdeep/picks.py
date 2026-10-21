@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, Integer, String, Text, select
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from .db import Base, Prediction, content_hash
@@ -47,6 +47,8 @@ class Pick(Base):
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Selección de una combinada: no cuenta como pick suelto, cuenta su combinada.
     parlay_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # Paper bet (simulación en euros): no sale en «Mis picks»; el stake va en euros.
+    paper: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class Parlay(Base):
@@ -66,6 +68,7 @@ class Parlay(Base):
     # Cuota final tras quitar las selecciones anuladas.
     settled_odds: Mapped[float | None] = mapped_column(Float, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paper: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 MAX_LEGS = 12
@@ -141,12 +144,14 @@ def _build(session: Session, data: dict, now: datetime) -> Pick:
         content_hash=content_hash({**record, "published_at": now.isoformat()}),
         status="pending",
         parlay_id=data.get("parlay_id"),
+        paper=bool(data.get("paper")),
     )
     return pick
 
 
 def create_parlay(session: Session, legs: list[dict], bookmaker: str, odds: float | None = None,
-                  stake: float = 1.0, note: str | None = None, now: datetime | None = None) -> Parlay:
+                  stake: float = 1.0, note: str | None = None, now: datetime | None = None,
+                  paper: bool = False) -> Parlay:
     """Publica una combinada con sus selecciones, todas antes de que empiece su partido."""
     now = now or datetime.now(timezone.utc)
     if not 2 <= len(legs) <= MAX_LEGS:
@@ -154,7 +159,7 @@ def create_parlay(session: Session, legs: list[dict], bookmaker: str, odds: floa
     bookmaker = (bookmaker or "").strip()
     if not bookmaker:
         raise PickError("Falta la casa")
-    built = [_build(session, {**leg, "bookmaker": bookmaker, "stake": stake}, now) for leg in legs]
+    built = [_build(session, {**leg, "bookmaker": bookmaker, "stake": stake, "paper": paper}, now) for leg in legs]
     combined = 1.0
     for leg in built:
         combined *= leg.odds
@@ -163,7 +168,7 @@ def create_parlay(session: Session, legs: list[dict], bookmaker: str, odds: floa
         raise PickError("Cuota no válida")
     parlay = Parlay(
         published_at=now, odds=odds, bookmaker=bookmaker, stake=float(stake or 1.0),
-        note=(note or "").strip() or None, status="pending",
+        note=(note or "").strip() or None, status="pending", paper=paper,
         content_hash=content_hash({
             "odds": odds, "bookmaker": bookmaker, "stake": float(stake or 1.0), "published_at": now.isoformat(),
             "legs": [leg.content_hash for leg in built],
@@ -239,12 +244,13 @@ def pending_with_game(session: Session) -> list[Pick]:
 
 def all_picks(session: Session) -> list[Pick]:
     """Picks sueltos (las selecciones de combinadas van con su combinada)."""
-    stmt = select(Pick).where(Pick.parlay_id.is_(None)).order_by(Pick.commence_time.desc(), Pick.id.desc())
+    stmt = select(Pick).where(Pick.parlay_id.is_(None), Pick.paper.is_not(True)).order_by(Pick.commence_time.desc(), Pick.id.desc())
     return list(session.scalars(stmt))
 
 
-def all_parlays(session: Session) -> list[tuple[Parlay, list[Pick]]]:
-    parlays = session.scalars(select(Parlay).order_by(Parlay.published_at.desc(), Parlay.id.desc()))
+def all_parlays(session: Session, paper: bool = False) -> list[tuple[Parlay, list[Pick]]]:
+    cond = Parlay.paper.is_(True) if paper else Parlay.paper.is_not(True)
+    parlays = session.scalars(select(Parlay).where(cond).order_by(Parlay.published_at.desc(), Parlay.id.desc()))
     return [(p, legs_of(session, p.id)) for p in parlays]
 
 

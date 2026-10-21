@@ -1,32 +1,33 @@
 import { useSyncExternalStore } from 'react'
 
-// Combinada en preparación: las selecciones se guardan en este navegador hasta publicarla.
-const CLAVE = 'propdeep.combinada'
-const avisos = new Set()
-
-function leer() {
-  try { return JSON.parse(localStorage.getItem(CLAVE)) || [] } catch { return [] }
+// Boletos en preparación (la combinada de «Mis picks» y la de «Paper bets»): las selecciones
+// se guardan en este navegador hasta publicarlas.
+function crearBoleto(clave) {
+  const avisos = new Set()
+  const leer = () => {
+    try { return JSON.parse(localStorage.getItem(clave)) || [] } catch { return [] }
+  }
+  let actual = leer()
+  const guardar = (legs) => {
+    actual = legs
+    try { localStorage.setItem(clave, JSON.stringify(legs)) } catch { /* sin almacenamiento */ }
+    avisos.forEach((f) => f())
+  }
+  const suscribir = (f) => { avisos.add(f); return () => avisos.delete(f) }
+  return {
+    // Una selección por línea: volver a añadirla la sustituye (otro lado u otra cuota).
+    añadir: (leg) => guardar([...actual.filter((l) => l.line_id !== leg.line_id), leg]),
+    quitar: (leg) => guardar(actual.filter((l) => l.line_id !== leg.line_id)),
+    vaciar: () => guardar([]),
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    use: () => useSyncExternalStore(suscribir, () => actual),
+  }
 }
-let actual = leer()
 
-function guardar(legs) {
-  actual = legs
-  try { localStorage.setItem(CLAVE, JSON.stringify(legs)) } catch { /* sin almacenamiento */ }
-  avisos.forEach((f) => f())
-}
-
-// Una selección por línea: volver a añadirla la sustituye (otro lado u otra cuota).
-export const combinada = {
-  añadir: (leg) => guardar([...actual.filter((l) => l.line_id !== leg.line_id), leg]),
-  quitar: (leg) => guardar(actual.filter((l) => l.line_id !== leg.line_id)),
-  vaciar: () => guardar([]),
-}
+export const combinada = crearBoleto('propdeep.combinada')
+export const boletoPaper = crearBoleto('propdeep.paper')
 
 export const cuotaTotal = (legs) => legs.reduce((a, l) => a * l.odds, 1)
 
-export function useCombinada() {
-  return useSyncExternalStore(
-    (f) => { avisos.add(f); return () => avisos.delete(f) },
-    () => actual,
-  )
-}
+export const useCombinada = () => combinada.use()
+export const useBoletoPaper = () => boletoPaper.use()

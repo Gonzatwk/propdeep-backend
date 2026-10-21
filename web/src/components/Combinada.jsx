@@ -1,7 +1,7 @@
 import { PaperPlaneTilt, Stack, X } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { combinada, cuotaTotal, useCombinada } from '../lib/combinada'
+import { combinada, cuotaTotal, useBoletoPaper, useCombinada } from '../lib/combinada'
 import { abrev } from '../lib/equipos'
 import { api } from '../lib/sesion'
 import { LADO, STAT } from '../lib/zona'
@@ -100,16 +100,24 @@ export default function Combinada({ onHecho }) {
   )
 }
 
-// Aviso fijo abajo mientras hay una combinada a medias.
+// Aviso fijo abajo mientras hay una combinada a medias (de «Mis picks» o de «Paper bets»).
 export function BarraCombinada() {
   const legs = useCombinada()
-  if (legs.length === 0) return null
+  const paper = useBoletoPaper()
+  if (legs.length === 0 && paper.length === 0) return null
+  const clase = 'flex items-center gap-2 border-2 border-gold bg-black px-4 py-3 font-semibold shadow-lg hover:bg-gold hover:text-black'
   return (
-    <Link
-      to="/mis-picks#combinada"
-      className="fixed right-4 bottom-4 z-40 flex items-center gap-2 border-2 border-gold bg-black px-4 py-3 font-semibold shadow-lg hover:bg-gold hover:text-black"
-    >
-      <Stack aria-hidden className="size-5" /> Combinada: {legs.length} · {fmtCuota(cuotaTotal(legs))}
-    </Link>
+    <div className="fixed right-4 bottom-4 z-40 flex flex-col items-end gap-2">
+      {legs.length > 0 && (
+        <Link to="/mis-picks#combinada" className={clase}>
+          <Stack aria-hidden className="size-5" /> Combinada: {legs.length} · {fmtCuota(cuotaTotal(legs))}
+        </Link>
+      )}
+      {paper.length > 0 && (
+        <Link to="/paper-bets#boleto" className={clase}>
+          <Stack aria-hidden className="size-5" /> Paper: {paper.length} · {fmtCuota(cuotaTotal(paper))}
+        </Link>
+      )}
+    </div>
   )
 }

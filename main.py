@@ -9,7 +9,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Re
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from propdeep import accounts, auto, billing, board, chat, picks
+from propdeep import accounts, auto, billing, board, chat, paper, picks
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import Settings, get_settings
@@ -552,6 +552,70 @@ def settle_pick(pick_id: int, req: SettleRequest):
             raise HTTPException(404, str(exc)) from exc
         except picks.PickError as exc:
             raise HTTPException(409, str(exc)) from exc
+
+
+# --- Paper bets: bank simulado en euros (solo el autor) ------------------------------------
+
+class PaperBankRequest(BaseModel):
+    initial: float = Field(gt=0, le=1_000_000)
+    reset: bool = False
+
+
+class PaperBetRequest(PickRequest):
+    stake: float = Field(gt=0, le=100_000)  # euros
+
+
+class PaperParlayRequest(ParlayRequest):
+    stake: float = Field(gt=0, le=100_000)
+
+
+@app.get("/paper", dependencies=[Depends(require_pick_admin)])
+def paper_state():
+    with session_factory()() as session:
+        return {**paper.state(session), "disclaimer": DISCLAIMER}
+
+
+@app.post("/paper/bank", dependencies=[Depends(require_pick_admin)])
+def paper_bank(req: PaperBankRequest):
+    """Cambia el bank inicial; con `reset`, empieza de cero (lo anterior no se borra)."""
+    with session_factory()() as session:
+        paper.set_bank(session, req.initial, req.reset)
+        return paper.state(session)
+
+
+@app.post("/paper/bets", status_code=201, dependencies=[Depends(require_pick_admin)])
+def paper_bet(req: PaperBetRequest):
+    with session_factory()() as session:
+        try:
+            picks.create(session, {**req.model_dump(), "paper": True})
+        except picks.PickError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return paper.state(session)
+
+
+@app.post("/paper/parlays", status_code=201, dependencies=[Depends(require_pick_admin)])
+def paper_parlay(req: PaperParlayRequest):
+    with session_factory()() as session:
+        try:
+            picks.create_parlay(session, [leg.model_dump() for leg in req.legs], req.bookmaker,
+                                req.odds, req.stake, req.note, paper=True)
+        except picks.PickError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return paper.state(session)
+
+
+@app.delete("/paper/bets/{kind}/{bet_id}", dependencies=[Depends(require_pick_admin)])
+def paper_cancel(kind: str, bet_id: int):
+    if kind not in ("single", "parlay"):
+        raise HTTPException(404, "Apuesta no encontrada")
+    with session_factory()() as session:
+        try:
+            paper.cancel(session, kind, bet_id)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return paper.state(session)
 
 
 # --- Chat en español sobre los datos del día ----------------------------------------------

@@ -11,6 +11,7 @@ import AvisoLegal from './pages/AvisoLegal'
 import Cookies from './pages/Cookies'
 import Home from './pages/Home'
 import MisPicks from './pages/MisPicks'
+import PaperBets from './pages/PaperBets'
 import NotFound from './pages/NotFound'
 import Privacidad from './pages/Privacidad'
 import Chat from './pages/zona/Chat'
@@ -24,7 +25,7 @@ import { CuentaProvider, useCuenta } from './lib/cuenta'
 import useReveal from './lib/useReveal'
 
 // Zona de partidos y cuenta: sin campo de tiros ni reloj, para leer datos sin ruido.
-const ZONA = ['/partidos', '/proyecciones', '/chat', '/entrar', '/cuenta', '/mis-picks']
+const ZONA = ['/partidos', '/proyecciones', '/paper-bets', '/chat', '/entrar', '/cuenta', '/mis-picks']
 const enZona = (ruta) => ZONA.some((z) => ruta === z || ruta.startsWith(`${z}/`))
 
 function Combinada() {
@@ -58,6 +59,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/mis-picks" element={<MisPicks />} />
+          <Route path="/paper-bets" element={<PaperBets />} />
           <Route path="/historial" element={<Navigate to="/mis-picks" replace />} />
           <Route path="/partidos" element={<Partidos />} />
           <Route path="/proyecciones" element={<Proyecciones />} />
