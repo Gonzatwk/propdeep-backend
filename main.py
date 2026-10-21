@@ -390,6 +390,20 @@ def get_game(event_id: str, user=Depends(current_user)):
         }
 
 
+@app.get("/board/top")
+def get_top(game_date: date | None = None, limit: int = 40, user=Depends(current_user)):
+    """Mejores proyecciones de la noche: las líneas por jugar más alejadas de la proyección."""
+    with session_factory()() as session:
+        day = game_date.isoformat() if game_date else board.default_date(session)
+        lines = board.board_lines(session, game_date=day) if day else []
+        return {
+            "game_date": day,
+            "viewer": _viewer(user),
+            "lines": board.top_lines(lines, _sees_all(user), limit=min(max(limit, 1), 100)),
+            "disclaimer": DISCLAIMER,
+        }
+
+
 @app.get("/board/lines/{line_id}")
 def get_line(line_id: int, user=Depends(current_user)):
     """Informe completo de una línea. 402 si hace falta suscripción."""
