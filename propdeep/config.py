@@ -49,6 +49,23 @@ class Settings:
     smtp_user: str = field(default_factory=lambda: os.getenv("SMTP_USER", ""))
     smtp_password: str = field(default_factory=lambda: os.getenv("SMTP_PASSWORD", ""))
     mail_from: str = field(default_factory=lambda: os.getenv("MAIL_FROM", ""))
+    # Uso personal en el PC: los correos de ADMIN_EMAILS entran sin enlace por correo.
+    # Solo funciona si WEB_URL es localhost, para que no se cuele en producción.
+    local_login: bool = field(default_factory=lambda: _flag("LOCAL_LOGIN"))
+    # Publica la jornada y liquida sola mientras el servidor esté encendido.
+    auto_jornada: bool = field(default_factory=lambda: _flag("AUTO_JORNADA"))
+    # Cada partido se analiza una vez, cuando faltan estas horas o menos para que empiece.
+    auto_hours_before: float = field(default_factory=lambda: _float("AUTO_HOURS_BEFORE", 10))
+    auto_every_minutes: float = field(default_factory=lambda: _float("AUTO_EVERY_MINUTES", 20))
+
+    @property
+    def local_login_enabled(self) -> bool:
+        host = self.web_url.split("://", 1)[-1].split(":", 1)[0].split("/", 1)[0]
+        return self.local_login and host in ("localhost", "127.0.0.1")
+
+
+def _flag(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in ("1", "true", "si", "sí", "yes")
 
 
 def get_settings() -> Settings:

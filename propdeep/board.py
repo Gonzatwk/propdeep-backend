@@ -77,14 +77,15 @@ def publish_board(
     free_quota: int,
     write_report: Callable[[Analysis, dict], str],
 ) -> list[Prediction]:
-    """Publica en el historial las líneas de la jornada que aún no estén (no se duplican)."""
+    """Publica en el historial las líneas de la jornada que aún no estén (no se duplican).
+    Una línea por jugador y estadística: si la casa la mueve, se queda la primera publicada."""
     existing = session.scalars(select(Prediction).where(Prediction.game_date == day.isoformat())).all()
-    seen = {(p.event_id, p.player_name, p.stat, p.line) for p in existing}
+    seen = {(p.event_id, p.player_name, p.stat) for p in existing}
     free_left = free_quota - sum(1 for p in existing if p.free)
 
     fresh: list[tuple[Analysis, dict]] = []
     for analysis, meta, prop in results:
-        key = (meta.get("event_id"), analysis.player, analysis.stat, analysis.line)
+        key = (meta.get("event_id"), analysis.player, analysis.stat)
         if key in seen:
             continue
         seen.add(key)
@@ -188,6 +189,11 @@ def board_lines(session: Session, game_date: str | None = None, event_id: str | 
     if event_id:
         stmt = stmt.where(Prediction.event_id == event_id)
     return list(session.scalars(stmt.order_by(Prediction.commence_time, Prediction.player_name, Prediction.stat)))
+
+
+def published_events(session: Session, game_date: str) -> set[str]:
+    stmt = select(Prediction.event_id).where(Prediction.game_date == game_date, Prediction.event_id.is_not(None))
+    return set(session.scalars(stmt.distinct()))
 
 
 def board_dates(session: Session) -> list[str]:

@@ -92,6 +92,29 @@ seguir midiéndolo (`/admin/predictions`).
 
 Lo publicado no se edita: cada predicción guarda un hash SHA-256 de su contenido.
 
+## Uso personal en el PC (Windows)
+
+Sin Stripe, Railway ni correo. En `.env`:
+
+```
+ADMIN_TOKEN=algo-largo
+ADMIN_EMAILS=tu-correo
+ODDS_REGIONS=us,eu
+CORS_ORIGINS=http://localhost:5173
+WEB_URL=http://localhost:5173
+LOCAL_LOGIN=1
+AUTO_JORNADA=1
+```
+
+Doble clic en `propdeep.bat`: abre el backend, la web (`npm run dev` con
+`VITE_API_URL=http://localhost:8000`) y el navegador. En `/entrar` pones tu correo y entras
+sin enlace (`LOCAL_LOGIN` solo vale con `WEB_URL` en localhost y para `ADMIN_EMAILS`).
+
+Con `AUTO_JORNADA`, cada `AUTO_EVERY_MINUTES` el servidor liquida lo terminado y analiza los
+partidos que empiezan en menos de `AUTO_HOURS_BEFORE` horas y aún no están publicados (cada
+partido una vez: mercados x regiones créditos, 8 con `us,eu`). La jornada cambia a las 06:00 UTC.
+Una línea por jugador y estadística: si la casa la mueve, se queda la primera.
+
 ## En local
 
 ```bash

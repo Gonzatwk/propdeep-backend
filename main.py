@@ -1,6 +1,7 @@
 """API de PropDeep: análisis de player props de la NBA con datos reales (información orientativa)."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import date, datetime
 from functools import lru_cache
 
@@ -8,7 +9,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Re
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from propdeep import accounts, billing, board, chat, picks
+from propdeep import accounts, auto, billing, board, chat, picks
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import Settings, get_settings
@@ -23,7 +24,13 @@ DISCLAIMER = (
     "apuesta ni garantiza ganar: apostar implica riesgo de perder dinero."
 )
 
-app = FastAPI(title="PropDeep API", version="2.0.0")
+@asynccontextmanager
+async def lifespan(_app):
+    start_auto_jornada()
+    yield
+
+
+app = FastAPI(title="PropDeep API", version="2.0.0", lifespan=lifespan)
 _settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
@@ -215,7 +222,10 @@ def require_user(user=Depends(current_user)):
 
 @app.post("/auth/login", status_code=202)
 def login(req: LoginRequest, background: BackgroundTasks):
-    """Manda el enlace de acceso. Responde igual exista o no la cuenta."""
+    """Manda el enlace de acceso. Responde igual exista o no la cuenta.
+
+    En el PC (LOCAL_LOGIN con WEB_URL en localhost), a los correos de ADMIN_EMAILS les
+    devuelve el token directamente para entrar sin correo."""
     email = accounts.normalize_email(req.email)
     if not email:
         raise HTTPException(422, "Correo no válido")
@@ -224,6 +234,8 @@ def login(req: LoginRequest, background: BackgroundTasks):
             token = accounts.request_login(session, email)
         except accounts.RateLimited:
             raise HTTPException(429, "Demasiados intentos. Espera un rato y vuelve a probar.") from None
+    if settings().local_login_enabled and email in _admin_emails():
+        return {"ok": True, "token": token}
     background.add_task(send_login_link, settings(), email, f"{settings().web_url}/entrar?token={token}")
     return {"ok": True}
 
@@ -268,9 +280,12 @@ def do_logout(token: str = Depends(_bearer)):
     return {"ok": True}
 
 
+def _admin_emails() -> set[str]:
+    return {e.strip().lower() for e in settings().admin_emails.split(",") if e.strip()}
+
+
 def _is_admin(user) -> bool:
-    emails = {e.strip().lower() for e in settings().admin_emails.split(",") if e.strip()}
-    return user is not None and user.email in emails
+    return user is not None and user.email in _admin_emails()
 
 
 def _me(user) -> dict:
@@ -387,22 +402,33 @@ def get_line(line_id: int, user=Depends(current_user)):
         return {**board.line_detail(p), "disclaimer": DISCLAIMER}
 
 
+def board_report(a, meta) -> str:
+    """Para no disparar el coste, Claude redacta los puntos de cada jugador y las líneas
+    gratis; el resto, plantilla."""
+    if a.stat == "pts" or meta.get("free"):
+        return write_report(a, claude_client(), settings().anthropic_model, books=meta.get("books"))
+    return template_report(a)
+
+
 @app.post("/admin/board", dependencies=[Depends(require_admin)])
 def build_board(game_date: date, max_events: int | None = None, an: Analyzer = Depends(analyzer)):
     """Analiza todas las props de la jornada y las publica en la zona de partidos.
 
-    Consume créditos de The Odds API (4 por partido en "eu"). Para no disparar el coste,
-    Claude redacta los puntos de cada jugador y las líneas gratis; el resto, plantilla."""
+    Consume créditos de The Odds API (mercados x regiones por partido)."""
     results = scan_day(an, odds_client(), game_date, max_events=max_events)
-
-    def report(a, meta):
-        if a.stat == "pts" or meta.get("free"):
-            return write_report(a, claude_client(), settings().anthropic_model, books=meta.get("books"))
-        return template_report(a)
-
     with session_factory()() as session:
-        published = board.publish_board(session, results, game_date, settings().free_lines_per_day, report)
+        published = board.publish_board(session, results, game_date, settings().free_lines_per_day, board_report)
         return {"published": len(published), "free": sum(1 for p in published if p.free)}
+
+
+def start_auto_jornada():
+    s = settings()
+    if s.local_login and not s.local_login_enabled:
+        import logging
+
+        logging.getLogger("propdeep").warning("LOCAL_LOGIN se ignora: WEB_URL no es localhost")
+    if s.auto_jornada:
+        auto.start(session_factory(), lambda: (analyzer(), odds_client(), bdl_client(), board_report), s)
 
 
 # --- Ejemplo de mis picks con ayuda de la página ------------------------------------------
