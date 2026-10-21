@@ -88,3 +88,18 @@ def test_balldontlie_waits_on_429_and_caches_repeated_queries():
     day = date(2026, 10, 21)
     assert bdl.played_yesterday(16, day) and bdl.played_yesterday(16, day)
     assert waits == [2.0] and len(calls) == 2
+
+
+def test_background_loop_runs_a_tick(tmp_path, monkeypatch):
+    import threading
+
+    from propdeep.db import make_session_factory
+
+    seen = threading.Event()
+    s = Settings(database_url=f"sqlite:///{tmp_path}/t.db", auto_every_minutes=60)
+    monkeypatch.setattr(auto, "tick", lambda session, an, odds, bdl, settings, report, now=None:
+                        (seen.set(), {"settled": 0, "published": 0, "events": []})[1]
+                        if settings is s and report == "r" else None)
+    thread = auto.start(make_session_factory(s.database_url), lambda: ("an", "odds", "bdl", "r"), s)
+    assert seen.wait(5)
+    thread.stop.set()

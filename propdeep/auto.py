@@ -79,8 +79,9 @@ def start(make_session, make_deps: Callable, settings) -> threading.Thread:
     def loop():
         while not stop.is_set():
             try:
+                analyzer, odds, bdl, report = make_deps()
                 with make_session() as session:
-                    done = tick(session, *make_deps(), settings)
+                    done = tick(session, analyzer, odds, bdl, settings, report)
                 if done["settled"] or done["published"]:
                     log.warning("Jornada automática: %s líneas publicadas (%s), %s liquidadas",
                                 done["published"], ", ".join(done["events"]) or "-", done["settled"])
