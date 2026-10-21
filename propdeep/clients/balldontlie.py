@@ -4,26 +4,56 @@ Necesita el plan ALL-STAR para /stats y /player_injuries. Paginación por cursor
 """
 from __future__ import annotations
 
+import time
 from datetime import date, timedelta
 from typing import Any
 
 import httpx
 
 BASE_URL = "https://api.balldontlie.io/v1"
+# El plan limita las peticiones por minuto: ante un 429 se espera y se reintenta.
+MAX_RETRIES = 8
+RETRY_WAIT = 10.0
+# Una jornada repite muchas consultas (cada jugador tiene varias líneas, cada equipo varios
+# jugadores): se guardan un rato en memoria para no gastar el límite.
+CACHE_TTL = 3600.0
 
 
 class BalldontlieClient:
-    def __init__(self, api_key: str, http: httpx.Client | None = None):
+    def __init__(self, api_key: str, http: httpx.Client | None = None, sleep=time.sleep):
         self._http = http or httpx.Client(
             base_url=BASE_URL, headers={"Authorization": api_key}, timeout=20.0
         )
+        self._sleep = sleep
+        self._cache: dict[tuple, tuple[float, Any]] = {}
+
+    def _request(self, path: str, params: dict[str, Any] | None = None) -> httpx.Response:
+        for attempt in range(MAX_RETRIES + 1):
+            resp = self._http.get(path, params=params)
+            if resp.status_code != 429 or attempt == MAX_RETRIES:
+                resp.raise_for_status()
+                return resp
+            try:
+                wait = float(resp.headers.get("retry-after") or RETRY_WAIT)
+            except ValueError:
+                wait = RETRY_WAIT
+            self._sleep(min(max(wait, 1.0), 60.0))
+        raise AssertionError("inalcanzable")
 
     def _get_all(self, path: str, params: dict[str, Any], limit: int = 500) -> list[dict]:
+        key = (path, tuple(sorted((k, str(v)) for k, v in params.items())), limit)
+        hit = self._cache.get(key)
+        if hit and time.monotonic() - hit[0] < CACHE_TTL:
+            return hit[1]
+        items = self._fetch_all(path, params, limit)
+        self._cache[key] = (time.monotonic(), items)
+        return items
+
+    def _fetch_all(self, path: str, params: dict[str, Any], limit: int) -> list[dict]:
         items: list[dict] = []
         params = {**params, "per_page": 100}
         while True:
-            resp = self._http.get(path, params=params)
-            resp.raise_for_status()
+            resp = self._request(path, params)
             body = resp.json()
             items.extend(body.get("data", []))
             cursor = body.get("meta", {}).get("next_cursor")
@@ -51,12 +81,10 @@ class BalldontlieClient:
         return sorted(played, key=lambda r: r["game"]["date"], reverse=True)
 
     def game(self, game_id: int) -> dict:
-        resp = self._http.get(f"/games/{game_id}")
-        resp.raise_for_status()
-        return resp.json()["data"]
+        return self._request(f"/games/{game_id}").json()["data"]
 
     def game_stats(self, game_id: int) -> list[dict]:
-        return self._get_all("/stats", {"game_ids[]": game_id}, limit=100)
+        return self._fetch_all("/stats", {"game_ids[]": game_id}, limit=100)
 
     def games_on(self, day: date) -> list[dict]:
         return self._get_all("/games", {"dates[]": day.isoformat()}, limit=100)

@@ -67,3 +67,24 @@ def test_tick_publishes_each_game_once_when_it_is_close(tmp_path):
         later = now + timedelta(hours=3)
         assert auto.tick(session, an, odds, bdl, s, report, now=later)["published"] == 2
         assert odds.calls == ["ev1", "ev2"]
+
+
+def test_balldontlie_waits_on_429_and_caches_repeated_queries():
+    import httpx
+
+    from propdeep.clients.balldontlie import BalldontlieClient
+
+    calls = []
+
+    def handler(request):
+        calls.append(str(request.url))
+        if len(calls) == 1:
+            return httpx.Response(429, headers={"retry-after": "2"})
+        return httpx.Response(200, json={"data": [{"id": 1}], "meta": {}})
+
+    waits = []
+    http = httpx.Client(base_url="https://bdl.test", transport=httpx.MockTransport(handler))
+    bdl = BalldontlieClient("k", http=http, sleep=waits.append)
+    day = date(2026, 10, 21)
+    assert bdl.played_yesterday(16, day) and bdl.played_yesterday(16, day)
+    assert waits == [2.0] and len(calls) == 2
