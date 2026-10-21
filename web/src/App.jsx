@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Anuncio from './components/Anuncio'
+import { BarraCombinada } from './components/Combinada'
 import Cursor from './components/Cursor'
 import Footer from './components/Footer'
 import FondoPista from './components/FondoPista'
@@ -19,12 +20,17 @@ import Informe from './pages/zona/Informe'
 import Partido from './pages/zona/Partido'
 import Partidos from './pages/zona/Partidos'
 import Proyecciones from './pages/zona/Proyecciones'
-import { CuentaProvider } from './lib/cuenta'
+import { CuentaProvider, useCuenta } from './lib/cuenta'
 import useReveal from './lib/useReveal'
 
 // Zona de partidos y cuenta: sin campo de tiros ni reloj, para leer datos sin ruido.
 const ZONA = ['/partidos', '/proyecciones', '/chat', '/entrar', '/cuenta', '/mis-picks']
 const enZona = (ruta) => ZONA.some((z) => ruta === z || ruta.startsWith(`${z}/`))
+
+function Combinada() {
+  const { usuario } = useCuenta()
+  return usuario?.admin ? <BarraCombinada /> : null
+}
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
@@ -69,6 +75,7 @@ export default function App() {
       <Footer />
       {!zona && <RelojPosesion />}
       <Cursor />
+      <Combinada />
     </div>
     </CuentaProvider>
   )

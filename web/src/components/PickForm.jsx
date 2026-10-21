@@ -1,5 +1,7 @@
-import { PaperPlaneTilt } from '@phosphor-icons/react'
+import { PaperPlaneTilt, Stack } from '@phosphor-icons/react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { combinada, useCombinada } from '../lib/combinada'
 import { api } from '../lib/sesion'
 import { nombreCasa, STAT } from '../lib/zona'
 import { fmtCuota, fmtNum } from '../format'
@@ -25,6 +27,8 @@ export default function PickForm({ linea, onHecho }) {
     note: '',
   })
   const [estado, setEstado] = useState({ enviando: false, error: '', hecho: false })
+  const legs = useCombinada()
+  const enCombinada = linea && legs.some((l) => l.line_id === linea.id)
   const cambia = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
   const num = (v) => Number(String(v).replace(',', '.'))
 
@@ -62,6 +66,18 @@ export default function PickForm({ linea, onHecho }) {
     } catch (err) {
       setEstado({ enviando: false, error: err.message, hecho: false })
     }
+  }
+
+  // Guarda la selección para la combinada (se publica entera desde «Mis picks»).
+  const aCombinada = () => {
+    const odds = num(f.odds)
+    if (!(odds > 1)) return setEstado({ enviando: false, error: 'Pon la cuota de esta selección', hecho: false })
+    combinada.añadir({
+      line_id: linea.id, side: f.side, line: num(f.line), odds,
+      player: linea.player, stat: linea.stat,
+      commence_time: linea.game?.commence_time, away_team: linea.game?.away_team, home_team: linea.game?.home_team,
+    })
+    setEstado({ enviando: false, error: '', hecho: false })
   }
 
   if (estado.hecho) {
@@ -122,9 +138,22 @@ export default function PickForm({ linea, onHecho }) {
       </label>
 
       {estado.error && <p role="alert" className="mt-4 text-gold">{estado.error}</p>}
-      <button type="submit" disabled={estado.enviando} className="btn btn-gold mt-5 h-12 px-6 text-lg disabled:opacity-60">
-        <PaperPlaneTilt aria-hidden className="size-5" /> {estado.enviando ? 'Publicando…' : 'Publicar pick'}
-      </button>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={estado.enviando} className="btn btn-gold h-12 px-6 text-lg disabled:opacity-60">
+          <PaperPlaneTilt aria-hidden className="size-5" /> {estado.enviando ? 'Publicando…' : 'Publicar pick'}
+        </button>
+        {linea && (
+          <button type="button" onClick={aCombinada} className="btn btn-ghost h-12 px-5">
+            <Stack aria-hidden className="size-5" /> {enCombinada ? 'Actualizar en la combinada' : 'Añadir a combinada'}
+          </button>
+        )}
+      </div>
+      {enCombinada && (
+        <p role="status" className="mt-3 text-sm text-muted">
+          En la combinada ({legs.length} {legs.length === 1 ? 'selección' : 'selecciones'}).{' '}
+          <Link to="/mis-picks#combinada" className="text-gold underline">Ver y publicar la combinada</Link>
+        </p>
+      )}
     </form>
   )
 }

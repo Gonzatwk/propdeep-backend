@@ -19,7 +19,7 @@ def grade(side: str, line: float, actual: float) -> str:
 
 def settle(session: Session, bdl: BalldontlieClient) -> list:
     """Liquida las predicciones y los picks pendientes cuyo partido ya tiene estadísticas finales."""
-    from .picks import pending_with_game
+    from .picks import pending_with_game, refresh_parlays
 
     settled = []
     by_game: dict[int, list] = defaultdict(list)
@@ -42,7 +42,7 @@ def settle(session: Session, bdl: BalldontlieClient) -> list:
             p.settled_at = datetime.now(timezone.utc)
             settled.append(p)
     session.commit()
-    return settled
+    return settled + refresh_parlays(session)
 
 
 def summary(predictions: list[Prediction]) -> dict:

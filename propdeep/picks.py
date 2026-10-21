@@ -45,6 +45,30 @@ class Pick(Base):
     status: Mapped[str] = mapped_column(String(10), default="pending", index=True)
     actual: Mapped[float | None] = mapped_column(Float, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Selección de una combinada: no cuenta como pick suelto, cuenta su combinada.
+    parlay_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+
+
+class Parlay(Base):
+    """Combinada: varias selecciones a una sola cuota. Gana si ganan todas; una anulada
+    se quita de la cuota, como hacen las casas."""
+
+    __tablename__ = "parlays"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    odds: Mapped[float] = mapped_column(Float)  # la que da la casa (puede llevar boost)
+    bookmaker: Mapped[str] = mapped_column(String(60))
+    stake: Mapped[float] = mapped_column(Float, default=1.0)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(10), default="pending", index=True)
+    # Cuota final tras quitar las selecciones anuladas.
+    settled_odds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+MAX_LEGS = 12
 
 
 class PickError(ValueError):
@@ -57,7 +81,13 @@ def _aware(dt: datetime | None) -> datetime | None:
 
 def create(session: Session, data: dict, now: datetime | None = None) -> Pick:
     """Publica un pick. Si viene de una línea de la zona, el partido y el jugador salen de ella."""
-    now = now or datetime.now(timezone.utc)
+    pick = _build(session, data, now or datetime.now(timezone.utc))
+    session.add(pick)
+    session.commit()
+    return pick
+
+
+def _build(session: Session, data: dict, now: datetime) -> Pick:
     if data.get("line_id") is not None:
         p = session.get(Prediction, data["line_id"])
         if p is None or not p.event_id:
@@ -110,10 +140,73 @@ def create(session: Session, data: dict, now: datetime | None = None) -> Pick:
         player_id=data.get("player_id"),
         content_hash=content_hash({**record, "published_at": now.isoformat()}),
         status="pending",
+        parlay_id=data.get("parlay_id"),
     )
-    session.add(pick)
-    session.commit()
     return pick
+
+
+def create_parlay(session: Session, legs: list[dict], bookmaker: str, odds: float | None = None,
+                  stake: float = 1.0, note: str | None = None, now: datetime | None = None) -> Parlay:
+    """Publica una combinada con sus selecciones, todas antes de que empiece su partido."""
+    now = now or datetime.now(timezone.utc)
+    if not 2 <= len(legs) <= MAX_LEGS:
+        raise PickError(f"Una combinada lleva entre 2 y {MAX_LEGS} selecciones")
+    bookmaker = (bookmaker or "").strip()
+    if not bookmaker:
+        raise PickError("Falta la casa")
+    built = [_build(session, {**leg, "bookmaker": bookmaker, "stake": stake}, now) for leg in legs]
+    combined = 1.0
+    for leg in built:
+        combined *= leg.odds
+    odds = float(odds) if odds else round(combined, 2)
+    if odds <= 1:
+        raise PickError("Cuota no válida")
+    parlay = Parlay(
+        published_at=now, odds=odds, bookmaker=bookmaker, stake=float(stake or 1.0),
+        note=(note or "").strip() or None, status="pending",
+        content_hash=content_hash({
+            "odds": odds, "bookmaker": bookmaker, "stake": float(stake or 1.0), "published_at": now.isoformat(),
+            "legs": [leg.content_hash for leg in built],
+        }),
+    )
+    session.add(parlay)
+    session.flush()
+    for leg in built:
+        leg.parlay_id = parlay.id
+        session.add(leg)
+    session.commit()
+    return parlay
+
+
+def legs_of(session: Session, parlay_id: int) -> list[Pick]:
+    return list(session.scalars(select(Pick).where(Pick.parlay_id == parlay_id).order_by(Pick.commence_time, Pick.id)))
+
+
+def refresh_parlays(session: Session) -> list[Parlay]:
+    """Cierra las combinadas cuyas selecciones ya tienen resultado."""
+    done = []
+    for parlay in session.scalars(select(Parlay).where(Parlay.status == "pending")):
+        legs = legs_of(session, parlay.id)
+        statuses = [leg.status for leg in legs]
+        if "lost" in statuses:
+            parlay.status, parlay.settled_odds = "lost", parlay.odds
+        elif "pending" in statuses:
+            continue
+        else:
+            # Las anuladas o nulas salen de la cuota (cuota de la casa / su cuota).
+            settled = parlay.odds
+            for leg in legs:
+                if leg.status in ("void", "push"):
+                    settled /= leg.odds
+            if all(st in ("void", "push") for st in statuses):
+                parlay.status, settled = "void", 1.0
+            else:
+                parlay.status = "won"
+            parlay.settled_odds = round(max(settled, 1.0), 3)
+        parlay.settled_at = datetime.now(timezone.utc)
+        done.append(parlay)
+    session.commit()
+    return done
 
 
 def settle_manual(session: Session, pick_id: int, actual: float | None, void: bool = False) -> Pick:
@@ -134,6 +227,8 @@ def settle_manual(session: Session, pick_id: int, actual: float | None, void: bo
         pick.status = grade(pick.side, pick.line, pick.actual)
     pick.settled_at = datetime.now(timezone.utc)
     session.commit()
+    if pick.parlay_id is not None:
+        refresh_parlays(session)
     return pick
 
 
@@ -143,7 +238,30 @@ def pending_with_game(session: Session) -> list[Pick]:
 
 
 def all_picks(session: Session) -> list[Pick]:
-    return list(session.scalars(select(Pick).order_by(Pick.commence_time.desc(), Pick.id.desc())))
+    """Picks sueltos (las selecciones de combinadas van con su combinada)."""
+    stmt = select(Pick).where(Pick.parlay_id.is_(None)).order_by(Pick.commence_time.desc(), Pick.id.desc())
+    return list(session.scalars(stmt))
+
+
+def all_parlays(session: Session) -> list[tuple[Parlay, list[Pick]]]:
+    parlays = session.scalars(select(Parlay).order_by(Parlay.published_at.desc(), Parlay.id.desc()))
+    return [(p, legs_of(session, p.id)) for p in parlays]
+
+
+def public_parlay(p: Parlay, legs: list[Pick]) -> dict:
+    return {
+        "id": p.id,
+        "published_at": _aware(p.published_at).isoformat(),
+        "commence_time": _aware(min(leg.commence_time for leg in legs)).isoformat() if legs else None,
+        "odds": p.odds,
+        "settled_odds": p.settled_odds,
+        "bookmaker": p.bookmaker,
+        "stake": p.stake,
+        "note": p.note,
+        "status": p.status,
+        "content_hash": p.content_hash,
+        "legs": [public(leg) for leg in legs],
+    }
 
 
 def public(p: Pick) -> dict:
@@ -169,12 +287,13 @@ def public(p: Pick) -> dict:
     }
 
 
-def summary(picks: list[Pick]) -> dict:
-    """Resultado en unidades: cada pick arriesga su stake."""
+def summary(picks: list) -> dict:
+    """Resultado en unidades: cada pick (o combinada) arriesga su stake."""
     graded = [p for p in picks if p.status in ("won", "lost")]
     won = [p for p in graded if p.status == "won"]
     staked = sum(p.stake for p in graded)
-    profit = sum(p.stake * (p.odds - 1) for p in won) - sum(p.stake for p in graded if p.status == "lost")
+    final = lambda p: getattr(p, "settled_odds", None) or p.odds  # noqa: E731
+    profit = sum(p.stake * (final(p) - 1) for p in won) - sum(p.stake for p in graded if p.status == "lost")
     return {
         "picks": len(picks),
         "won": len(won),
@@ -184,5 +303,5 @@ def summary(picks: list[Pick]) -> dict:
         "hit_rate": round(len(won) / len(graded), 4) if graded else None,
         "profit_units": round(profit, 2),
         "roi": round(profit / staked, 4) if staked else None,
-        "avg_odds": round(sum(p.odds for p in graded) / len(graded), 3) if graded else None,
+        "avg_odds": round(sum(final(p) for p in graded) / len(graded), 3) if graded else None,
     }

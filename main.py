@@ -153,7 +153,13 @@ def settle_pending():
     """Liquida predicciones del modelo y picks con el resultado final de Balldontlie."""
     with session_factory()() as session:
         done = settle(session, bdl_client())
-        return {"settled": [picks.public(p) if isinstance(p, picks.Pick) else _public(p) for p in done]}
+        out = []
+        for p in done:
+            if isinstance(p, picks.Parlay):
+                out.append(picks.public_parlay(p, picks.legs_of(session, p.id)))
+            else:
+                out.append(picks.public(p) if isinstance(p, picks.Pick) else _public(p))
+        return {"settled": out}
 
 
 @app.get("/admin/predictions", dependencies=[Depends(require_admin)])
@@ -472,6 +478,26 @@ class PickRequest(BaseModel):
     away_team: str | None = Field(default=None, max_length=60)
 
 
+class ParlayLeg(BaseModel):
+    line_id: int | None = None
+    player_name: str | None = Field(default=None, max_length=120)
+    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m)$")
+    line: float | None = None
+    side: str = Field(pattern="^(over|under)$")
+    odds: float = Field(gt=1.0, le=50)
+    commence_time: datetime | None = None
+    home_team: str | None = Field(default=None, max_length=60)
+    away_team: str | None = Field(default=None, max_length=60)
+
+
+class ParlayRequest(BaseModel):
+    legs: list[ParlayLeg] = Field(min_length=2, max_length=12)
+    odds: float | None = Field(default=None, gt=1.0, le=10000)
+    bookmaker: str = Field(max_length=60)
+    stake: float = Field(default=1.0, gt=0, le=10)
+    note: str | None = Field(default=None, max_length=280)
+
+
 class SettleRequest(BaseModel):
     actual: float | None = None
     void: bool = False
@@ -482,9 +508,13 @@ def list_picks():
     """Todos los picks de Gonza, ganados y perdidos, con su resumen. Público."""
     with session_factory()() as session:
         ps = picks.all_picks(session)
+        parlays = picks.all_parlays(session)
         return {
             "summary": picks.summary(ps),
             "picks": [picks.public(p) for p in ps],
+            "parlay_summary": picks.summary([p for p, _ in parlays]),
+            "parlays": [picks.public_parlay(p, legs) for p, legs in parlays],
+            "total": picks.summary([*ps, *(p for p, _ in parlays)]),
             "warning": PICKS_WARNING,
             "disclaimer": DISCLAIMER,
         }
@@ -498,6 +528,18 @@ def create_pick(req: PickRequest):
             return picks.public(picks.create(session, req.model_dump()))
         except picks.PickError as exc:
             raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/parlays", status_code=201, dependencies=[Depends(require_pick_admin)])
+def create_parlay(req: ParlayRequest):
+    """Publica una combinada antes de que empiece ninguno de sus partidos. No se edita."""
+    with session_factory()() as session:
+        try:
+            p = picks.create_parlay(session, [leg.model_dump() for leg in req.legs], req.bookmaker,
+                                    req.odds, req.stake, req.note)
+        except picks.PickError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return picks.public_parlay(p, picks.legs_of(session, p.id))
 
 
 @app.post("/picks/{pick_id}/settle", dependencies=[Depends(require_pick_admin)])
