@@ -52,3 +52,14 @@ def test_paper_bet_can_be_removed_before_the_game(api, gonza):  # noqa: F811
     bet = s["bets"][0]
     assert api.c.delete(f"/paper/bets/single/{bet['id']}", headers=gonza).json()["bets"] == []
     assert api.c.delete(f"/paper/bets/single/{bet['id']}", headers=gonza).status_code == 404
+
+
+def test_paper_bets_can_be_added_after_the_game_starts_but_picks_cannot(api, gonza):
+    from tests.test_picks import BEFORE, MANUAL
+
+    late = {**MANUAL, "commence_time": BEFORE}
+    assert api.c.post("/picks", json=late, headers=gonza).status_code == 422
+    r = api.c.post("/paper/bets", json={**late, "stake": 10}, headers=gonza)
+    assert r.status_code == 201
+    bet = r.json()["bets"][0]
+    assert api.c.delete(f"/paper/bets/single/{bet['id']}", headers=gonza).status_code == 200

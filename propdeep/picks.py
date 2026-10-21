@@ -133,7 +133,8 @@ def _build(session: Session, data: dict, now: datetime) -> Pick:
     start = _aware(data.get("commence_time"))
     if start is None:
         raise PickError("Falta la hora del partido")
-    if start <= now:
+    # Las paper bets (solo las ve el autor) se pueden apuntar con el partido empezado.
+    if start <= now and not data.get("paper"):
         raise PickError("El partido ya ha empezado: los picks se publican antes")
     if data.get("stat") not in STATS:
         raise PickError("Estadística no válida")

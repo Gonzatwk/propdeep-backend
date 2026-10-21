@@ -39,7 +39,7 @@ export default function Moneyline({ g, autor }) {
         <h2 id="ml-titulo" className="display flex items-center gap-2 text-[1.9rem] leading-none">
           <Trophy aria-hidden className="size-6 text-gold" /> Ganador del partido
         </h2>
-        <p className="text-sm text-muted">Mejor cuota de {ml.books.length} {ml.books.length === 1 ? 'casa' : 'casas'}{autor && !empezado ? ' · pulsa un equipo para apostarlo' : ''}</p>
+        <p className="text-sm text-muted">Mejor cuota de {ml.books.length} {ml.books.length === 1 ? 'casa' : 'casas'}{autor ? ' · pulsa un equipo para apostarlo' : ''}</p>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -53,7 +53,7 @@ export default function Moneyline({ g, autor }) {
               <span className="block text-xs text-muted">{nombreCasa(b?.bookmaker)}</span>
             </>
           )
-          return autor && !empezado ? (
+          return autor ? (
             <button key={k} type="button" aria-pressed={lado === k} onClick={() => setLado(lado === k ? null : k)}
               className={`border-2 p-4 text-left transition-colors ${lado === k ? 'border-gold bg-gold/10' : 'border-white/20 hover:border-gold'}`}>
               {contenido}
@@ -84,12 +84,12 @@ export default function Moneyline({ g, autor }) {
         <p className="mt-2 text-xs text-muted">Cuotas de antes del partido; se actualizan cada hora mientras el servidor está encendido.</p>
       </details>
 
-      {autor && !empezado && lado && <Apostar key={lado} g={g} lado={lado} team={lado === 'home' ? g.home_team : g.away_team} />}
+      {autor && lado && <Apostar key={lado} g={g} lado={lado} empezado={empezado} team={lado === 'home' ? g.home_team : g.away_team} />}
     </section>
   )
 }
 
-function Apostar({ g, lado, team }) {
+function Apostar({ g, lado, team, empezado }) {
   const books = [...g.moneyline.books].sort((a, b) => cuotaDe(b, lado) - cuotaDe(a, lado))
   const [book, setBook] = useState(0)
   const [odds, setOdds] = useState(String(cuotaDe(books[0], lado)))
@@ -135,8 +135,9 @@ function Apostar({ g, lado, team }) {
         <label className="text-sm font-semibold">Cuota<input inputMode="decimal" value={odds} onChange={(e) => setOdds(e.target.value)} className={campo} /></label>
       </div>
 
+      {empezado && <p className="mt-3 text-sm text-muted">El partido ya ha empezado: solo puedes apuntarlo en Paper bets. Pon la cuota que te dé tu casa en directo.</p>}
       <div className="mt-5 grid gap-5 md:grid-cols-2">
-        <div className="border border-gold/60 p-4">
+        {!empezado && <div className="border border-gold/60 p-4">
           <p className="text-sm font-semibold text-gold">Mis picks</p>
           <label className="mt-2 block text-sm font-semibold">Unidades<input inputMode="decimal" value={unidades} onChange={(e) => setUnidades(e.target.value)} className={campo} /></label>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -148,7 +149,7 @@ function Apostar({ g, lado, team }) {
               <Stack aria-hidden className="size-5" /> {legs.some((l) => claveLeg(l) === clave) ? 'Actualizar en combinada' : 'A la combinada'}
             </button>
           </div>
-        </div>
+        </div>}
         <div className="border border-white/40 p-4">
           <p className="text-sm font-semibold">Paper bets</p>
           <label className="mt-2 block text-sm font-semibold">Importe (€)

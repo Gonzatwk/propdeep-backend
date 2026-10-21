@@ -159,7 +159,7 @@ function Apuesta({ b, accion, ahora }) {
   const [texto, clase] = ESTADO[b.status] || ESTADO.pending
   const combinada = b.kind === 'parlay'
   const legs = combinada ? b.legs : [b]
-  const quitable = b.status === 'pending' && new Date(b.commence_time).getTime() > ahora
+  const quitable = b.status === 'pending'
   const [error, setError] = useState('')
   const quitar = async () => {
     try {

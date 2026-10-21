@@ -119,7 +119,7 @@ def state(session: Session) -> dict:
 
 
 def cancel(session: Session, kind: str, bet_id: int, now: datetime | None = None) -> None:
-    """Quita una paper bet que aún no ha empezado (para corregir un error al apuntarla)."""
+    """Quita una paper bet sin liquidar (para corregir un error al apuntarla)."""
     now = now or datetime.now(timezone.utc)
     if kind == "single":
         bet = session.get(Pick, bet_id)
@@ -129,8 +129,8 @@ def cancel(session: Session, kind: str, bet_id: int, now: datetime | None = None
         legs = list(session.scalars(select(Pick).where(Pick.parlay_id == bet_id))) if bet is not None and bet.paper else []
     if not legs:
         raise LookupError("Apuesta no encontrada")
-    if bet.status != "pending" or any(_aware(leg.commence_time) <= now for leg in legs):
-        raise ValueError("Solo se puede quitar antes de que empiece el partido")
+    if bet.status != "pending":
+        raise ValueError("Ya está liquidada: no se puede quitar")
     for leg in legs:
         session.delete(leg)
     if kind == "parlay":

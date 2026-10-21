@@ -221,9 +221,9 @@ export default function Informe() {
         </dl>
       </section>
 
-      {usuario?.admin && !demo && porJugar && (
+      {usuario?.admin && !demo && (
         <div className="mt-10 space-y-6">
-          <PickForm linea={l} />
+          {porJugar && <PickForm linea={l} />}
           <PaperForm linea={l} />
         </div>
       )}
