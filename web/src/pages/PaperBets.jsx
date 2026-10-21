@@ -155,7 +155,7 @@ function Seleccion({ l }) {
   )
 }
 
-function Apuesta({ b, accion, ahora }) {
+function Apuesta({ b, accion }) {
   const [texto, clase] = ESTADO[b.status] || ESTADO.pending
   const combinada = b.kind === 'parlay'
   const legs = combinada ? b.legs : [b]
@@ -206,7 +206,6 @@ export default function PaperBets() {
   const { usuario, cargando: cargandoCuenta } = useCuenta()
   const { cargando, datos, error, recargar, accion } = usePaper()
   const [vista, setVista] = useState('abiertas')
-  const [ahora] = useState(() => Date.now())
 
   if (!cargandoCuenta && !usuario?.admin) return <Navigate to="/mis-picks" replace />
   if (cargando) return <Pagina><Cargando filas={3} /></Pagina>
@@ -269,7 +268,7 @@ export default function PaperBets() {
           </p>
         ) : (
           <ul className="mt-4 border-t border-line">
-            {lista.map((b) => <Apuesta key={`${b.kind}-${b.id}`} b={b} accion={accion} ahora={ahora} />)}
+            {lista.map((b) => <Apuesta key={`${b.kind}-${b.id}`} b={b} accion={accion} />)}
           </ul>
         )}
       </section>

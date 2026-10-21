@@ -54,7 +54,7 @@ def test_paper_bet_can_be_removed_before_the_game(api, gonza):  # noqa: F811
     assert api.c.delete(f"/paper/bets/single/{bet['id']}", headers=gonza).status_code == 404
 
 
-def test_paper_bets_can_be_added_after_the_game_starts_but_picks_cannot(api, gonza):
+def test_paper_bets_can_be_added_after_the_game_starts_but_picks_cannot(api, gonza):  # noqa: F811
     from tests.test_picks import BEFORE, MANUAL
 
     late = {**MANUAL, "commence_time": BEFORE}
