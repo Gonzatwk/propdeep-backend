@@ -18,7 +18,9 @@ seguir midiéndolo (`/admin/predictions`).
 3. **Contexto**: local o visitante, back-to-back, lesión, y en puntos cuánto concede el rival
    frente a la media de la liga (ajuste máximo del 5 %).
 4. **Probabilidad**: distribución normal (Poisson en triples) alrededor de la proyección,
-   mezclada al 50 % con la probabilidad del mercado sin margen (`MODEL_WEIGHT`).
+   mezclada al 20 % con la probabilidad del mercado sin margen (`MODEL_WEIGHT`). En el backtest de
+   la 2025-26 con cuotas reales, al 50 % perdía (-2,8 %); los datos le dan al modelo un 6-10 % de
+   peso, y al 20 % quedaba en torno a +2 % sin ser significativo (`scripts/analisis_peso.py`).
 5. **Ventaja**: probabilidad estimada menos la implícita en la cuota (con margen). Por debajo
    del 3 % (`MIN_EDGE`) el veredicto es "sin ventaja". Jugadores fuera, en duda o con menos de
    5 partidos nunca son jugada.
@@ -100,7 +102,13 @@ cp .env.example .env   # y rellena las claves
 pytest
 uvicorn main:app --reload
 python -m scripts.informes_ejemplo 2026-10-21
+python -m scripts.picks_hoy 2026-10-21   # jornada para uso personal: jugadas con la mejor cuota
 ```
+
+`picks_hoy` analiza la línea principal de cada jugador, busca la mejor cuota de más y de menos entre las
+casas que dan esa misma línea y marca como jugada solo lo que llega a `MIN_EDGE`. Guarda todo en
+`picks_AAAA-MM-DD.csv` (se abre con Excel). `--casas bet365,williamhill` limita a tus casas y
+`--regions us,eu` cambia las regiones de The Odds API.
 
 ## Planes de las APIs
 
@@ -126,3 +134,5 @@ python -m scripts.backtest --lineas odds-api --stats pts --max-creditos 19000
 - `--todas-casas` (con `odds-api`) guarda la línea principal de cada casa en `backtest_out/odds-api-casas/`,
   para comparar casas y buscar la mejor cuota. Sale de la caché: no vuelve a pagar lo descargado.
 - Resultados en `backtest_out/<modo>/resumen.json` y `lineas.csv`.
+- `python -m scripts.analisis_peso backtest_out/odds-api-casas/lineas.csv` dice qué peso merece el
+  modelo frente al mercado (ajustado solo con meses anteriores) y el ROI de la regla por mitades.
