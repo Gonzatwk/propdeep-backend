@@ -189,3 +189,50 @@ def test_no_pick_before_three_games_this_season():
     t = compute_trends(values, [36.0] * 20, 20.5, season_games=2, last_season_games=18)
     a = analyze("X", "pts", 20.5, 1.90, 1.90, t, Context())
     assert a.side is None and "partidos esta temporada" in a.reasons[0]
+
+
+def test_teammate_out_factor_shrinks_and_caps():
+    from propdeep.model import teammate_out_factor
+    values = [20.0] * 10 + [30.0] * 3
+    ids = list(range(13))
+    days = [f"2026-01-{i + 1:02d}" for i in range(13)]
+    absent = {"Estrella": (set(range(10)), "2026-01-01")}
+    f, det = teammate_out_factor(values, ids, days, [1] * 13, 1, absent)
+    # ratio 1,5 encogido con 3 partidos sin él: 1 + 0,5 * 3/11
+    assert f == pytest.approx(1 + 0.5 * 3 / 11, abs=1e-3)
+    assert det[0]["games_without"] == 3 and det[0]["games_with"] == 10
+    # con otro equipo no cuenta, y con poca muestra el factor es 1
+    assert teammate_out_factor(values, ids, days, [2] * 13, 1, absent)[0] == 1.0
+
+
+def test_analyzer_adjusts_for_injured_key_teammate():
+    from tests.fakes import TEAM, stat_row
+
+    star = {"id": 500, "first_name": "Kyrie", "last_name": "Irving", "team": TEAM}
+    # Luka: 20 partidos; mete 35 en los 4 que no jugó Kyrie y 25 en el resto.
+    base = FakeBDL([25.0] * 20, DAY)
+    luka_rows = base.rows
+    for r in luka_rows[2:16:4]:
+        r["pts"] = 35.0
+    star_rows = [{**r, "player": {"id": 500}, "pts": 22} for i, r in enumerate(luka_rows) if i not in (2, 6, 10, 14)]
+
+    class WithInjury(FakeBDL):
+        def player_stats(self, player_id, seasons):
+            rows = star_rows if player_id == 500 else luka_rows
+            return sorted(rows, key=lambda r: r["game"]["date"], reverse=True)
+
+        def _get_all(self, path, params, limit=500):
+            if path == "/player_injuries":
+                return [{"player": star, "status": "Out"}]
+            return []
+
+        def team_games(self, team_id, season):
+            return [{**r["game"], "status": "Final", "home_team_score": 100} for r in luka_rows[-5:]]
+
+    bdl = WithInjury([25.0] * 20, DAY)
+    bdl.rows = luka_rows
+    an = Analyzer(bdl, 2026, 0.03, 0.2)
+    result, _ = an.analyze_prop("Luka Doncic", "pts", 26.5, 1.9, 1.9, DAY)
+    ctx = result.context
+    assert ctx.teammates_out and ctx.teammates_out[0]["teammate"] == "Kyrie Irving"
+    assert ctx.teammates_out[0]["games_without"] == 4 and ctx.teammate_factor > 1.1

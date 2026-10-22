@@ -17,6 +17,10 @@ seguir midiéndolo (`/admin/predictions`).
    más casas ofrecen.
 3. **Contexto**: local o visitante, back-to-back, lesión, y en puntos cuánto concede el rival
    frente a la media de la liga (ajuste máximo del 5 %).
+   **Compañero fuera**: si el parte de lesiones da fuera o en duda a un compañero importante (jugó 3
+   de los 5 últimos partidos del equipo con 24 minutos o más), la proyección se multiplica por la
+   media del jugador sin él frente a con él (con su equipo actual), encogida según la muestra
+   (`n / (n + 8)`) y con tope del ±25 %. Hacen falta 3 partidos sin él y 5 con él.
 4. **Probabilidad**: distribución normal (Poisson en triples) alrededor de la proyección,
    mezclada al 20 % con la probabilidad del mercado sin margen (`MODEL_WEIGHT`). En el backtest de
    la 2025-26 con cuotas reales, al 50 % perdía (-2,8 %); los datos le dan al modelo un 6-10 % de
@@ -136,3 +140,6 @@ python -m scripts.backtest --lineas odds-api --stats pts --max-creditos 19000
 - Resultados en `backtest_out/<modo>/resumen.json` y `lineas.csv`.
 - `python -m scripts.analisis_peso backtest_out/odds-api-casas/lineas.csv` dice qué peso merece el
   modelo frente al mercado (ajustado solo con meses anteriores) y el ROI de la regla por mitades.
+- El backtest incluye el ajuste por compañero fuera ("fuera" = no jugó ese partido; no hay parte de
+  lesiones histórico). `--sin-companeros` lo quita. `python -m scripts.analisis_companeros
+  backtest_out/odds-api-casas/lineas.csv` dice si el ajuste aporta algo que la casa no tenga ya.

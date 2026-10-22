@@ -19,7 +19,8 @@ Recibes un JSON con los datos de una línea. Escribe un informe de análisis:
 - 4 a 6 frases en español neutro, claras, sin jerga innecesaria.
 - Cubre, si hay datos: la proyección frente a la línea, cuántas veces superó la línea \
 (últimos 5, últimos 10, temporada), en casa y fuera, contra este rival, minutos y rol, \
-rival y contexto (back-to-back, lesiones), y si las casas ofrecen líneas distintas.
+rival y contexto (back-to-back, lesiones), compañeros importantes que no juegan \
+(context.teammates_out: su media con y sin cada uno) y si las casas ofrecen líneas distintas.
 - Usa solo los números del JSON. No inventes estadísticas, lesiones ni noticias.
 - Es información orientativa, no una recomendación: no digas qué apostar, no hables de \
 "valor", "ventaja", "pick" ni "confianza", y nunca digas "seguro", "fijo" ni \
@@ -96,6 +97,10 @@ def template_report(a: Analysis) -> str:
     if vs.get("games"):
         n = vs["games"]
         parts.append(f"Contra este rival promedia {_n(vs['avg'])} en {n} {'partido' if n == 1 else 'partidos'} recientes.")
+    for out in a.context.teammates_out or []:
+        if out.get("games_without") and out.get("avg_without") is not None and out.get("avg_with") is not None:
+            parts.append(f"Sin {out['teammate']} (no juega hoy) promedia {_n(out['avg_without'])} en "
+                         f"{out['games_without']} partidos, frente a {_n(out['avg_with'])} con él.")
     if t.minutes_last5 and t.minutes_season:
         parts.append(f"Minutos: {_n(t.minutes_last5)} en los últimos 5 frente a {_n(t.minutes_season)} de media.")
     parts.extend(a.reasons)
