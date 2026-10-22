@@ -160,7 +160,7 @@ Web (`web/.env.local` o el hosting):
 - Próximo en estudio: backtest de robos, tapones y PRA cuando se renueven los créditos.
 
 ## 9. Pendiente de revisar
-- Umbral de ventaja casi inalcanzable. Con `MODEL_WEIGHT=0.2` y la ventaja medida frente a la probabilidad CON margen (`1/cuota`), el modelo tiene que separarse unos 28 pp del mercado para llegar a `MIN_EDGE=0.03`. Ejemplo con cuotas 1,90/1,90: mercado sin margen 50 %, con margen 52,6 % (el margen ya resta ~2,6 pp); hace falta `p_final` ≥ 55,6 %, es decir, `p_modelo` ≥ 78 %. En la práctica casi todo sale "sin ventaja". Hay que decidir si es intencionado (prudencia, dado que el backtest no mostró ventaja) o se ajusta (umbral, peso o medir frente a la probabilidad sin margen). No cambiarlo sin decisión del autor y sin backtest.
+- Umbral de ventaja casi inalcanzable. Con `MODEL_WEIGHT=0.2` y la ventaja medida frente a la probabilidad CON margen (`1/cuota`), el modelo tiene que separarse unos 28 pp del mercado para llegar a `MIN_EDGE=0.03`. Ejemplo con cuotas 1,90/1,90: mercado sin margen 50 %, con margen 52,6 % (el margen ya resta ~2,6 pp); hace falta `p_final` ≥ 55,6 %, es decir, `p_modelo` ≥ 78 %. En la práctica casi todo sale "sin ventaja". Hay que decidir si es intencionado (prudencia, dado que el backtest no mostró ventaja) o se ajusta (umbral o peso; la ventaja se sigue midiendo siempre frente a 1/cuota, que es lo que se paga de verdad). No cambiarlo sin decisión del autor y sin backtest.
 
 ## 10. Reglas para Claude Code
 - Antes de cambiar lógica de cálculo, escribe un test que cubra el comportamiento actual. `pytest` en verde antes de cada commit.
