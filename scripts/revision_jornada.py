@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from datetime import date
 from statistics import mean
 
 from sqlalchemy import select
@@ -136,14 +137,17 @@ def main() -> None:
         print(f"No hay líneas publicadas el {args.game_date} en {s.database_url}")
         return
     bdl = BalldontlieClient(s.balldontlie_api_key)
-    boxes: dict[tuple[int, int], dict] = {}
-    game_ids = sorted({p.game_id for p in preds if p.game_id})
-    print(f"{len(preds)} líneas en {len(game_ids)} partidos. Descargando box scores...")
+    # Todos los partidos del día, no solo los guardados en la línea: a los traspasados se les
+    # guardaba el partido de su equipo anterior. Cada jugador juega un partido al día.
+    boxes: dict[int, dict] = {}
+    game_ids = sorted({g["id"] for g in bdl.games_on(date.fromisoformat(args.game_date))}
+                      | {p.game_id for p in preds if p.game_id})
+    print(f"{len(preds)} líneas; {len(game_ids)} partidos ese día. Descargando box scores...")
     for gid in game_ids:
         for r in bdl.game_stats(gid):
-            boxes[(gid, (r.get("player") or {}).get("id"))] = r
+            boxes[(r.get("player") or {}).get("id")] = r
 
-    rows = [row_for(p, boxes.get((p.game_id, p.player_id))) for p in preds]
+    rows = [row_for(p, boxes.get(p.player_id)) for p in preds]
     out = args.out or f"revision_{args.game_date}.csv"
     with open(out, "w", newline="", encoding="utf-8-sig") as fh:
         writer = csv.DictWriter(fh, fieldnames=list(rows[0]), delimiter=";")

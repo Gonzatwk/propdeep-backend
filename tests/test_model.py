@@ -159,3 +159,26 @@ def test_main_line_is_the_one_most_books_offer():
     rows = [mk(28.5, 1.9, 1.9, "a"), mk(28.5, 1.85, 1.95, "b"), mk(27.5, 1.7, 2.1, "c")]
     [(main, books)] = main_lines(rows)
     assert main.line == 28.5 and main.bookmaker == "a" and len(books) == 3
+
+
+def test_traded_player_uses_event_game_and_is_not_a_pick():
+    """Historial con su equipo anterior (TEAM) pero esta noche juega con otro: partido, rival y pista
+    salen del partido de la casa, y sin jugada hasta 5 partidos con el equipo nuevo."""
+    from tests.fakes import OPP, PLAYER, TEAM
+    new = {"id": 30, "full_name": "Miami Heat"}
+
+    class Traded(FakeBDL):
+        def find_player(self, name):
+            return {**PLAYER, "team": new}
+
+        def games_on(self, day):
+            return [{"id": 998, "date": day.isoformat(), "home_team": TEAM, "visitor_team": {"id": 40, "full_name": "X"}},
+                    {"id": 999, "date": day.isoformat(), "home_team": OPP, "visitor_team": new}]
+
+    an = Analyzer(Traded([25.0] * 20, DAY), 2026, 0.03, 0.5)
+    result, meta = an.analyze_prop("Luka Doncic", "pts", 15.5, 1.9, 1.9, DAY,
+                                   event_teams=("Los Angeles Lakers", "Miami Heat"))
+    assert meta["game_id"] == 999 and meta["team_id"] == 30
+    assert result.context.opponent == "Los Angeles Lakers" and result.context.home is False
+    assert result.context.traded and result.side is None
+    assert "cambiado de equipo" in result.reasons[0]

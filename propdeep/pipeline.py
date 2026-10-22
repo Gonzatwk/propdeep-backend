@@ -29,8 +29,12 @@ class Analyzer:
         under_odds: float,
         game_day: date,
         opponent_name: str | None = None,
+        event_teams: tuple[str, str] | None = None,
     ) -> tuple[Analysis, dict]:
-        """Devuelve el análisis y los metadatos del partido (ids) para el historial."""
+        """Devuelve el análisis y los metadatos del partido (ids) para el historial.
+
+        `event_teams` son los equipos del partido según la casa: con ellos se encuentra el partido
+        aunque el jugador haya cambiado de equipo y su historial sea del anterior."""
         if stat not in MARKETS.values():
             raise ValueError(f"Estadística no soportada: {stat}")
         player = self.bdl.find_player(player_name)
@@ -46,9 +50,15 @@ class Analyzer:
         last_season_games = sum(1 for r in logs if r["game"]["season"] == self.season - 1)
         trends = compute_trends(values, mins, line, season_games, last_season_games)
 
-        team_id = (logs[0]["team"]["id"] if logs else (player.get("team") or {}).get("id"))
-        game = self._find_game(team_id, game_day)
+        last_team = logs[0]["team"]["id"] if logs else None
+        team_id, game = self._team_and_game(player, last_team, game_day, event_teams)
         context = self._context(player, stat, team_id, game, game_day, opponent_name)
+        if last_team is not None and team_id is not None and last_team != team_id:
+            context.traded = True
+            context.games_with_team = sum(1 for r in logs if r["team"]["id"] == team_id)
+        elif game is not None and team_id is None and logs:
+            # Juega este partido pero ninguno de sus equipos conocidos está en él: traspaso reciente.
+            context.traded, context.games_with_team = True, 0
         opponent_id = None
         if game and team_id is not None:
             opponent_id = game["visitor_team"]["id"] if game["home_team"]["id"] == team_id else game["home_team"]["id"]
@@ -67,6 +77,28 @@ class Analyzer:
             "game_date": game_day.isoformat(),
         }
         return result, meta
+
+    def _team_and_game(self, player: dict, last_team: int | None, day: date,
+                       event_teams: tuple[str, str] | None) -> tuple[int | None, dict | None]:
+        """Equipo actual del jugador y su partido del día.
+
+        El equipo del último partido jugado no vale tras un traspaso: el 21-oct-2026 un 23 % de las
+        líneas salieron con el rival, la pista y el partido del equipo anterior."""
+        current = (player.get("team") or {}).get("id")
+        candidates = [t for t in (current, last_team) if t is not None]
+        if event_teams:
+            names = {_norm_team(n) for n in event_teams}
+            for game in self.bdl.games_on(day):
+                teams = (game["home_team"], game["visitor_team"])
+                if {_norm_team(t.get("full_name")) for t in teams} == names:
+                    ids = [t["id"] for t in teams]
+                    team = next((t for t in candidates if t in ids), None)
+                    return team, game
+        for team in candidates:
+            game = self._find_game(team, day)
+            if game:
+                return team, game
+        return (candidates[0] if candidates else None), None
 
     def _find_game(self, team_id: int | None, day: date) -> dict | None:
         if team_id is None:
@@ -124,6 +156,11 @@ def _side_of(row: dict) -> tuple[bool | None, int | None]:
     return team == home_id, visitor_id if team == home_id else home_id
 
 
+def _norm_team(name: str | None) -> str:
+    # The Odds API y Balldontlie escriben igual los nombres salvo "LA Clippers"/"Los Angeles Clippers".
+    return (name or "").lower().replace("los angeles clippers", "la clippers").strip()
+
+
 def _final(game: dict) -> bool:
     return str(game.get("status", "")).lower() == "final" and bool(game.get("home_team_score"))
 
@@ -148,6 +185,7 @@ def scan_day(
             try:
                 analysis, meta = analyzer.analyze_prop(
                     prop.player, stat, prop.line, prop.over_odds, prop.under_odds, day,
+                    event_teams=(prop.home_team, prop.away_team),
                 )
             except (LookupError, ValueError) as exc:
                 log(f"  descartada {prop.player} {stat} {prop.line}: {exc}")
