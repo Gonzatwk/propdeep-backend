@@ -34,6 +34,12 @@ class FakeOdds:
     def events_on(self, day):
         return self.events
 
+    def moneylines(self, day):
+        books = [{"bookmaker": "bookA", "home_odds": 1.6, "away_odds": 2.4},
+                 {"bookmaker": "bookB", "home_odds": 1.65, "away_odds": 2.3}]
+        return [{"event_id": e["id"], "commence_time": e["commence_time"], "home_team": e["home_team"],
+                 "away_team": e["away_team"], "books": books} for e in self.events]
+
     def player_props(self, event):
         mk = lambda market, line, o, u, book: PropLine(event["id"], event["commence_time"], event["home_team"],
                                                        event["away_team"], "Luka Doncic", market, line, o, u, book)
