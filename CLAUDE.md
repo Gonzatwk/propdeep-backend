@@ -72,7 +72,7 @@ Arranque:
 - Web a mano: `cd web`, `npm run dev` (http://localhost:5173).
 - Build de la web: `cd web` y `npm run build` (salida `dist`). Lint de la web: `npm run lint` (oxlint).
 
-Tests (con el venv activado): `pytest`. Hoy pasan 96. Deben pasar antes de cada commit.
+Tests (con el venv activado): `pytest`. Todos deben pasar antes de cada commit.
 
 Scripts (con el venv activado, desde la raíz):
 - `python -m scripts.picks_hoy AAAA-MM-DD [--regions eu] [--casas bet365,williamhill] [--peso 0.2] [--max-events N] [--out archivo.csv]`: jornada en CSV con la mejor cuota. No usarlo con `AUTO_JORNADA=1`: paga las cuotas dos veces.
@@ -118,7 +118,7 @@ Scripts (con el venv activado, desde la raíz):
 - Tests: cada cambio de lógica lleva su test en `tests/`, usando `tests/fakes.py` en vez de APIs reales.
 - Configuración centralizada en `propdeep/config.py` (`get_settings()`); defaults de la web en `web/src/config.js`. Una variable nueva va también en `.env.example`.
 - Endpoints: públicos `/board`, `/board/games/{id}`, `/board/top`, `/board/lines/{id}`, `/picks`, `/tipsters`, `/waitlist`, `/chat`, `/auth/*`, `/me`. Admin con cabecera `x-admin-token` (`/admin/*`, p. ej. `POST /admin/board`). Picks y paper bets solo para correos de `ADMIN_EMAILS`.
-- Web sin cookies ni servicios o fuentes de terceros.
+- La web NO usa cookies ni servicios o fuentes de terceros. La sesión va en `localStorage`. Existe la página legal de privacidad y cookies (`Cookies.jsx`, `Privacidad.jsx`) porque la ley la pide, pero solo explica que no hay cookies: no añadas ninguna sin decisión del autor.
 - Diseño: llamativo, blanco y negro con campo de tiros dorado; nada de fondo oscuro con neón ni estética de plantilla.
 
 ## 7. Variables de entorno
@@ -153,12 +153,16 @@ Web (`web/.env.local` o el hosting):
 - RGPD básico, sin datos innecesarios.
 - Negocio futuro: suscripción de 15 €/mes o 120 €/año con 7 días gratis, plan Pro de 25 €/mes, pase de 7 días a 5 € y freemium de ~3 líneas al día. Preventa de 9 € eliminada.
 - Subida anunciada en la web: el mensual pasa a 19 € el 1-ene-2027 (`SUBIDA` en `web/src/lib/zona.js`). Hay que cumplirla o quitar el aviso.
-- Desde el 21-oct-2026: primero uso personal en local; el lanzamiento comercial (Stripe, Railway, correo) está aplazado aunque el código ya esté en main.
+- Desde el 21-oct-2026: primero uso personal en local; el lanzamiento comercial está aplazado.
+- Código del lanzamiento: TODO está ya en main. Lo básico (cuentas por enlace, Stripe mensual/anual con prueba de 7 días, muro freemium, chat) llegó antes; el PR #16 (correo por Resend) y el PR #15 (plan Pro, pase de 7 días, subida a 19 €, pausa, correo del día 5, dato del día, auditoría de tipsters) se fusionaron el 22-oct-2026. No queda ningún PR abierto. Lo que falta no es código sino configuración: precios en Stripe, despliegue en Railway, dominio y Resend, webhook.
 - Criterio de corte: tras 300 jugadas o el 31-dic-2026, ROI con la mejor cuota ≥ 0 → preparar el lanzamiento; negativo → herramienta personal y portafolio.
 - Solo NBA; nada de fútbol ni tenis hasta tener suscriptores.
 - Próximo en estudio: backtest de robos, tapones y PRA cuando se renueven los créditos.
 
-## 9. Reglas para Claude Code
+## 9. Pendiente de revisar
+- Umbral de ventaja casi inalcanzable. Con `MODEL_WEIGHT=0.2` y la ventaja medida frente a la probabilidad CON margen (`1/cuota`), el modelo tiene que separarse unos 28 pp del mercado para llegar a `MIN_EDGE=0.03`. Ejemplo con cuotas 1,90/1,90: mercado sin margen 50 %, con margen 52,6 % (el margen ya resta ~2,6 pp); hace falta `p_final` ≥ 55,6 %, es decir, `p_modelo` ≥ 78 %. En la práctica casi todo sale "sin ventaja". Hay que decidir si es intencionado (prudencia, dado que el backtest no mostró ventaja) o se ajusta (umbral, peso o medir frente a la probabilidad sin margen). No cambiarlo sin decisión del autor y sin backtest.
+
+## 10. Reglas para Claude Code
 - Antes de cambiar lógica de cálculo, escribe un test que cubra el comportamiento actual. `pytest` en verde antes de cada commit.
 - Cambios pequeños, un commit por cambio lógico.
 - No toques archivos `.env` ni subas claves ni datos personales.
