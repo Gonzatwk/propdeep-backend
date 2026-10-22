@@ -26,6 +26,10 @@ MAX_MINUTES_ADJ = 0.15
 # Tras un traspaso no hay jugada hasta tener estos partidos con el equipo nuevo.
 MIN_GAMES_NEW_TEAM = 5
 
+# Al empezar la temporada la proyección sale entera de la anterior. En la 2025-26 las dos primeras
+# semanas fueron las peores del modelo (-7 % y -9 % de ROI con peso 0,5, frente a -2 % el resto).
+MIN_SEASON_GAMES_FOR_PICK = 3
+
 
 @dataclass
 class Trends:
@@ -242,6 +246,9 @@ def _blocking_reason(context: Context, trends: Trends) -> str | None:
         return f"Estado de lesión: {context.injury_status}. No analizamos jugadores en duda."
     if trends.games < 5:
         return "Menos de 5 partidos con minutos: muestra insuficiente."
+    if trends.season_games < MIN_SEASON_GAMES_FOR_PICK:
+        return (f"Lleva {trends.season_games} partidos esta temporada: el historial es de la anterior. "
+                f"Sin jugada hasta {MIN_SEASON_GAMES_FOR_PICK}.")
     if context.traded and (context.games_with_team or 0) < MIN_GAMES_NEW_TEAM:
         return (f"Ha cambiado de equipo y lleva {context.games_with_team or 0} partidos con el nuevo: "
                 "su historial es de otro rol.")

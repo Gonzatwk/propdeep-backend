@@ -182,3 +182,10 @@ def test_traded_player_uses_event_game_and_is_not_a_pick():
     assert result.context.opponent == "Los Angeles Lakers" and result.context.home is False
     assert result.context.traded and result.side is None
     assert "cambiado de equipo" in result.reasons[0]
+
+
+def test_no_pick_before_three_games_this_season():
+    values = [30.0] * 20
+    t = compute_trends(values, [36.0] * 20, 20.5, season_games=2, last_season_games=18)
+    a = analyze("X", "pts", 20.5, 1.90, 1.90, t, Context())
+    assert a.side is None and "partidos esta temporada" in a.reasons[0]
