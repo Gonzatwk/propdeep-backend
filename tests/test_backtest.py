@@ -205,3 +205,28 @@ def test_odds_history_skips_missing_event_and_hides_key(tmp_path):
     with pytest.raises(SystemExit) as exc:
         h2._get("/ev", {"date": "d"}, 10)
     assert "CLAVE-SECRETA" not in str(exc.value)
+
+
+def test_teammate_out_raises_projection_when_star_sits():
+    """El jugador 0 mete 30 sin el 1 y 15 con él; el día que el 1 no juega, la proyección sube."""
+    rows, games = [], []
+    for k in range(40):
+        day = (START + timedelta(days=2 * k)).isoformat()
+        gid = 2000 + k
+        games.append(Game(gid, day, 2025, 1, 2, "Home", "Away", 110, 105))
+        star_plays = k % 4 != 0 or k < 4  # falta uno de cada cuatro desde el 5.º
+        if k == 39:
+            star_plays = False
+        rows.append(Row(0, "Jugador 0", 1, gid, day, 2025, 30.0,
+                        {"pts": 15.0 if star_plays else 30.0, "reb": 5.0, "ast": 4.0, "fg3m": 2.0}))
+        if star_plays:
+            rows.append(Row(1, "Estrella", 1, gid, day, 2025, 34.0, {"pts": 28.0, "reb": 6.0, "ast": 6.0, "fg3m": 3.0}))
+    season = Season(rows, games, 2025)
+    target = next(r for r in season.rows if r.player_id == 0 and r.game_id == 2039)
+    assert set(season.teammates_out(target)) == {"Estrella"}
+    cand = Candidate(target, "pts", 19.5, 1.9, 1.9, "x")
+    con = evaluate(season, [cand], 0.03, 0.2)[0]
+    sin = evaluate(season, [cand], 0.03, 0.2, companeros=False)[0]
+    assert con.analysis.context.teammate_factor > 1.2
+    assert con.analysis.projection > sin.analysis.projection
+    assert con.p_model_base == pytest.approx(sin.analysis.prob_over_model, abs=1e-3)

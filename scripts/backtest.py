@@ -38,7 +38,7 @@ from statistics import mean
 
 from propdeep.clients.balldontlie import BASE_URL as BDL_URL, minutes, normalize_name
 from propdeep.clients.odds import BASE_URL as ODDS_URL, MARKETS, SPORT, parse_props
-from propdeep.model import Analysis, Context, analyze, compute_trends
+from propdeep.model import Analysis, Context, analyze, compute_trends, is_key_teammate, prob_over, teammate_out_factor
 
 MIN_OPPONENT_GAMES = 5  # igual que en propdeep/pipeline.py
 PROXY_ODDS = 1.87  # cuota típica de una prop (-115 americano)
@@ -111,11 +111,53 @@ class Season:
         self._final = sorted((g for g in self.games if g.season == self.season and g.home_score),
                              key=lambda g: g.day)
         self._factor_cache: dict[tuple[int, str], float] = {}
+        # Para "compañero fuera": partidos de cada equipo, quién jugó cada partido y con qué equipo.
+        team_games: dict[int, dict[int, str]] = defaultdict(dict)
+        self.game_players: dict[int, set[int]] = defaultdict(set)
+        self.player_team_games: dict[tuple[int, int], dict[int, float]] = defaultdict(dict)
+        self.player_team_since: dict[tuple[int, int], str] = {}
+        for r in self.rows:
+            team_games[r.team_id][r.game_id] = r.day
+            self.game_players[r.game_id].add(r.player_id)
+            self.player_team_games[(r.player_id, r.team_id)][r.game_id] = r.minutes
+            key = (r.player_id, r.team_id)
+            self.player_team_since[key] = min(self.player_team_since.get(key, r.day), r.day)
+        self.team_games = {t: sorted(((d, g) for g, d in gs.items())) for t, gs in team_games.items()}
+        self.team_players: dict[int, set[int]] = defaultdict(set)
+        for pid, team in self.player_team_games:
+            self.team_players[team].add(pid)
+        self._absent_cache: dict[tuple[int, int], dict] = {}
 
     def history(self, player_id: int, day: str) -> list[Row]:
         """Partidos del jugador ESTRICTAMENTE anteriores a `day` (temporada y la anterior)."""
         return [r for r in self.by_player.get(player_id, [])
                 if r.day < day and r.season in (self.season, self.season - 1)]
+
+    def teammates_out(self, row: Row) -> dict[str, tuple[set[int], str]]:
+        """Compañeros importantes que no jugaron este partido (sigue en el equipo y no jugó).
+
+        Sin parte de lesiones histórico, "fuera" es "no jugó": la mayoría de bajas se conocen antes del
+        partido, pero las de última hora también entran, y eso favorece un poco al ajuste."""
+        key = (row.team_id, row.game_id)
+        if key in self._absent_cache:
+            return self._absent_cache[key]
+        last5 = [g for d, g in self.team_games.get(row.team_id, []) if d < row.day][-5:]
+        here = self.game_players.get(row.game_id, set())
+        out: dict[str, tuple[set[int], str]] = {}
+        candidates = {pid for pid in self.team_players.get(row.team_id, set())
+                      if any(g in self.player_team_games[(pid, row.team_id)] for g in last5)}
+        for pid in candidates - here:
+            played = self.player_team_games[(pid, row.team_id)]
+            if not is_key_teammate(last5, played):
+                continue
+            # Si su siguiente partido es con otro equipo, lo habían traspasado: no es una baja.
+            nxt = [r for r in self.by_player.get(pid, []) if r.day > row.day]
+            if nxt and nxt[-1].team_id != row.team_id:
+                continue
+            name = self.by_player[pid][0].player_name
+            out[name] = (set(played), self.player_team_since[(pid, row.team_id)])
+        self._absent_cache[key] = out
+        return out
 
     def context(self, row: Row, stat: str) -> Context:
         g = self.games_by_id.get(row.game_id)
@@ -419,13 +461,15 @@ class Result:
     actual: float
     outcome_over: float | None  # 1 over, 0 under, None push
     profit: float | None  # por unidad, solo si hubo pick
+    p_model_base: float | None = None  # probabilidad del modelo sin el ajuste por compañeros
 
 
-def evaluate(season: Season, cands: list[Candidate], min_edge: float, model_weight: float) -> list[Result]:
-    return _evaluate(season, cands, min_edge, model_weight, compute_trends)
+def evaluate(season: Season, cands: list[Candidate], min_edge: float, model_weight: float,
+             companeros: bool = True) -> list[Result]:
+    return _evaluate(season, cands, min_edge, model_weight, compute_trends, companeros)
 
 
-def _evaluate(season, cands, min_edge, model_weight, make_trends) -> list[Result]:
+def _evaluate(season, cands, min_edge, model_weight, make_trends, companeros=True) -> list[Result]:
     results = []
     for c in cands:
         prev = season.history(c.row.player_id, c.row.day)
@@ -435,11 +479,21 @@ def _evaluate(season, cands, min_edge, model_weight, make_trends) -> list[Result
         mins = [p.minutes for p in prev]
         season_games = sum(1 for p in prev if p.season == season.season)
         trends = make_trends(values, mins, c.line, season_games)
+        ctx = season.context(c.row, c.stat)
+        if companeros:
+            absent = season.teammates_out(c.row)
+            if absent:
+                ctx.teammate_factor, ctx.teammates_out = teammate_out_factor(
+                    values, [p.game_id for p in prev], [p.day for p in prev], [p.team_id for p in prev],
+                    c.row.team_id, absent)
         try:
             a = analyze(c.row.player_name, c.stat, c.line, c.over_odds, c.under_odds, trends,
-                        season.context(c.row, c.stat), min_edge=min_edge, model_weight=model_weight)
+                        ctx, min_edge=min_edge, model_weight=model_weight)
         except ValueError:
             continue
+        p_base = a.prob_over_model
+        if ctx.teammate_factor != 1.0:
+            p_base = round(prob_over(c.stat, a.projection / ctx.teammate_factor, trends.sd, c.line), 4)
         actual = c.row.stats[c.stat]
         outcome = None if actual == c.line else float(actual > c.line)
         profit = None
@@ -448,7 +502,7 @@ def _evaluate(season, cands, min_edge, model_weight, make_trends) -> list[Result
             profit = (a.odds_taken - 1) if won else -1.0
         elif a.side:
             profit = 0.0
-        results.append(Result(c, a, actual, outcome, profit))
+        results.append(Result(c, a, actual, outcome, profit, p_base))
     return results
 
 
@@ -540,13 +594,15 @@ def write_outputs(results: list[Result], summary: dict, out_dir: Path) -> None:
         w = csv.writer(fh)
         w.writerow(["fecha", "jugador", "estadistica", "linea", "cuota_over", "cuota_under", "casa",
                     "proyeccion", "p_modelo", "p_mercado", "p_final", "lado", "ventaja", "confianza",
-                    "real", "beneficio"])
+                    "real", "beneficio", "factor_companeros", "companeros_fuera", "p_modelo_base"])
         for r in results:
             a = r.analysis
             w.writerow([r.cand.row.day, a.player, r.cand.stat, a.line, a.over_odds, a.under_odds,
                         r.cand.bookmaker, a.projection, a.prob_over_model, a.prob_over_market,
                         a.prob_over_final, a.side or "", a.edge, a.confidence, r.actual,
-                        "" if r.profit is None else round(r.profit, 4)])
+                        "" if r.profit is None else round(r.profit, 4), a.context.teammate_factor,
+                        "|".join(t["teammate"] for t in (a.context.teammates_out or []) if t["factor"] != 1.0),
+                        r.p_model_base])
 
 
 def print_summary(s: dict, mode: str) -> None:
@@ -601,6 +657,8 @@ def main() -> None:
     parser.add_argument("--estimar", action="store_true", help="Solo calcula los créditos necesarios")
     parser.add_argument("--todas-casas", action="store_true",
                         help="odds-api: una fila por casa (sale de la caché, no gasta créditos de más)")
+    parser.add_argument("--sin-companeros", action="store_true",
+                        help="Sin el ajuste por compañeros fuera (para comparar)")
     parser.add_argument("--cache", default="backtest_cache")
     parser.add_argument("--salida", default="backtest_out")
     args = parser.parse_args()
@@ -636,7 +694,7 @@ def main() -> None:
         if not complete:
             print("Tope de créditos alcanzado: el backtest cubre solo las jornadas descargadas.")
 
-    results = evaluate(season, cands, s.min_edge, s.model_weight)
+    results = evaluate(season, cands, s.min_edge, s.model_weight, companeros=not args.sin_companeros)
     summary = summarize(results)
     summary.update(modo=args.lineas, temporada=args.temporada)
     out = Path(args.salida) / (args.lineas + ("-casas" if args.lineas == "odds-api" and args.todas_casas else ""))
