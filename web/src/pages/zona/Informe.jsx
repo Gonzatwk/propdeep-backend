@@ -1,6 +1,7 @@
 import { Fingerprint } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import PaperForm from '../../components/PaperForm'
 import PickForm from '../../components/PickForm'
 import {
   AvisoDemo, AvisoResponsable, Cargando, Fallo, Muro, Pagina, Tasa, Volver,
@@ -220,7 +221,12 @@ export default function Informe() {
         </dl>
       </section>
 
-      {usuario?.admin && !demo && porJugar && <div className="mt-10"><PickForm linea={l} /></div>}
+      {usuario?.admin && !demo && (
+        <div className="mt-10 space-y-6">
+          {porJugar && <PickForm linea={l} />}
+          <PaperForm linea={l} />
+        </div>
+      )}
 
       {l.content_hash && (
         <p className="mt-8 flex items-start gap-2 text-xs break-all text-muted">

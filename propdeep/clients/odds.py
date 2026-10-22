@@ -68,6 +68,45 @@ class OddsClient:
         return parse_all_props(resp.json())
 
 
+    def moneylines(self, day: date) -> list[dict]:
+        """Cuotas a ganador de todos los partidos de la jornada en una sola llamada.
+        Cuesta 1 crédito por región (no por partido)."""
+        start = datetime.combine(day, time(12), tzinfo=timezone.utc)
+        resp = self._http.get(
+            f"/sports/{SPORT}/odds",
+            params={
+                "apiKey": self._key,
+                "regions": self._regions,
+                "markets": "h2h",
+                "oddsFormat": "decimal",
+                "commenceTimeFrom": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "commenceTimeTo": (start + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            },
+        )
+        resp.raise_for_status()
+        return [parse_moneyline(ev) for ev in resp.json()]
+
+
+def parse_moneyline(payload: dict) -> dict:
+    """Un partido con la cuota de cada casa para el local y el visitante."""
+    home, away = payload.get("home_team", ""), payload.get("away_team", "")
+    books = []
+    for book in payload.get("bookmakers", []):
+        for market in book.get("markets", []):
+            if market.get("key") != "h2h":
+                continue
+            prices = {o.get("name"): float(o["price"]) for o in market.get("outcomes", []) if o.get("price")}
+            if home in prices and away in prices:
+                books.append({"bookmaker": book["key"], "home_odds": prices[home], "away_odds": prices[away]})
+    return {
+        "event_id": payload.get("id", ""),
+        "commence_time": payload.get("commence_time", ""),
+        "home_team": home,
+        "away_team": away,
+        "books": sorted(books, key=lambda b: b["bookmaker"]),
+    }
+
+
 def parse_props(payload: dict) -> list[PropLine]:
     """Una línea por (mercado, jugador, línea): la de la casa con menos margen."""
     best: dict[tuple, PropLine] = {}

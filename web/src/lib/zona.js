@@ -1,8 +1,18 @@
 import { useCuenta } from './cuenta'
+import { fmtNum } from '../format'
 import { useModo } from './tablero'
 
 export const STAT = { pts: 'Puntos', reb: 'Rebotes', ast: 'Asistencias', fg3m: 'Triples' }
 export const LADO = { over: 'Más', under: 'Menos' }
+
+// Texto de una selección: «Puntos: Más de 27,5» o, en moneyline, «Gana el partido».
+export const seleccion = (l) => (l.stat === 'ml' ? 'Gana el partido' : `${STAT[l.stat]}: ${LADO[l.side]} de ${fmtNum(l.line)}`)
+// Resultado liquidado: lo que hizo el jugador o, en moneyline, por cuánto ganó o perdió el equipo.
+export const resultado = (l) => {
+  if (l.actual == null) return ''
+  if (l.stat !== 'ml') return `hizo ${fmtNum(l.actual)}`
+  return l.actual > 0 ? `ganó por ${fmtNum(l.actual)}` : `perdió por ${fmtNum(-l.actual)}`
+}
 export const PRECIO = { mensual: 15, anual: 120, pro: 25, pase: 5, prueba: 7 }
 // Subida anunciada del plan mensual. Quien se suscriba antes mantiene su precio mientras siga.
 // El día de la subida hay que crear el precio nuevo en Stripe y cambiar STRIPE_PRICE_MONTHLY.

@@ -1,6 +1,7 @@
 """API de PropDeep: análisis de player props de la NBA con datos reales (información orientativa)."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import date, datetime
 from functools import lru_cache
 
@@ -8,7 +9,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Re
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from propdeep import accounts, billing, board, chat, picks, tipsters
+from propdeep import accounts, auto, billing, board, chat, moneyline, paper, picks, tipsters
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import Settings, get_settings
@@ -23,7 +24,13 @@ DISCLAIMER = (
     "apuesta ni garantiza ganar: apostar implica riesgo de perder dinero."
 )
 
-app = FastAPI(title="PropDeep API", version="2.0.0")
+@asynccontextmanager
+async def lifespan(_app):
+    start_auto_jornada()
+    yield
+
+
+app = FastAPI(title="PropDeep API", version="2.0.0", lifespan=lifespan)
 _settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
@@ -146,7 +153,13 @@ def settle_pending():
     """Liquida predicciones del modelo y picks con el resultado final de Balldontlie."""
     with session_factory()() as session:
         done = settle(session, bdl_client())
-        return {"settled": [picks.public(p) if isinstance(p, picks.Pick) else _public(p) for p in done]}
+        out = []
+        for p in done:
+            if isinstance(p, picks.Parlay):
+                out.append(picks.public_parlay(p, picks.legs_of(session, p.id)))
+            else:
+                out.append(picks.public(p) if isinstance(p, picks.Pick) else _public(p))
+        return {"settled": out}
 
 
 @app.get("/admin/predictions", dependencies=[Depends(require_admin)])
@@ -215,7 +228,10 @@ def require_user(user=Depends(current_user)):
 
 @app.post("/auth/login", status_code=202)
 def login(req: LoginRequest, background: BackgroundTasks):
-    """Manda el enlace de acceso. Responde igual exista o no la cuenta."""
+    """Manda el enlace de acceso. Responde igual exista o no la cuenta.
+
+    En el PC (LOCAL_LOGIN con WEB_URL en localhost), a los correos de ADMIN_EMAILS les
+    devuelve el token directamente para entrar sin correo."""
     email = accounts.normalize_email(req.email)
     if not email:
         raise HTTPException(422, "Correo no válido")
@@ -224,6 +240,8 @@ def login(req: LoginRequest, background: BackgroundTasks):
             token = accounts.request_login(session, email)
         except accounts.RateLimited:
             raise HTTPException(429, "Demasiados intentos. Espera un rato y vuelve a probar.") from None
+    if settings().local_login_enabled and email in _admin_emails():
+        return {"ok": True, "token": token}
     background.add_task(send_login_link, settings(), email, f"{settings().web_url}/entrar?token={token}")
     return {"ok": True}
 
@@ -268,9 +286,12 @@ def do_logout(token: str = Depends(_bearer)):
     return {"ok": True}
 
 
+def _admin_emails() -> set[str]:
+    return {e.strip().lower() for e in settings().admin_emails.split(",") if e.strip()}
+
+
 def _is_admin(user) -> bool:
-    emails = {e.strip().lower() for e in settings().admin_emails.split(",") if e.strip()}
-    return user is not None and user.email in emails
+    return user is not None and user.email in _admin_emails()
 
 
 def _me(user) -> dict:
@@ -388,12 +409,14 @@ def get_board(game_date: date | None = None, user=Depends(current_user)):
     with session_factory()() as session:
         day = game_date.isoformat() if game_date else board.default_date(session)
         lines = board.board_lines(session, game_date=day) if day else []
+        games = board.games(lines)
+        ml = moneyline.for_events(session, [g["event_id"] for g in games])
         return {
             "game_date": day,
             "dates": board.board_dates(session),
             "free_lines_per_day": settings().free_lines_per_day,
             "viewer": _viewer(user),
-            "games": board.games(lines),
+            "games": [{**g, "moneyline": moneyline.public(ml.get(g["event_id"]))} for g in games],
             "disclaimer": DISCLAIMER,
         }
 
@@ -407,9 +430,24 @@ def get_game(event_id: str, user=Depends(current_user)):
         if not lines:
             raise HTTPException(404, "Partido no encontrado")
         return {
-            "game": board.game_header(lines[0]),
+            "game": {**board.game_header(lines[0]),
+                     "moneyline": moneyline.public(session.get(moneyline.GameOdds, event_id), full=True)},
             "viewer": _viewer(user),
             "lines": [board.line_summary(p, board.is_unlocked(p, subscriber)) for p in lines],
+            "disclaimer": DISCLAIMER,
+        }
+
+
+@app.get("/board/top")
+def get_top(game_date: date | None = None, limit: int = 40, user=Depends(current_user)):
+    """Mejores proyecciones de la noche: las líneas por jugar más alejadas de la proyección."""
+    with session_factory()() as session:
+        day = game_date.isoformat() if game_date else board.default_date(session)
+        lines = board.board_lines(session, game_date=day) if day else []
+        return {
+            "game_date": day,
+            "viewer": _viewer(user),
+            "lines": board.top_lines(lines, _sees_all(user), limit=min(max(limit, 1), 100)),
             "disclaimer": DISCLAIMER,
         }
 
@@ -426,21 +464,26 @@ def get_line(line_id: int, user=Depends(current_user)):
         return {**board.line_detail(p), "disclaimer": DISCLAIMER}
 
 
+def board_report(a, meta) -> str:
+    """Para no disparar el coste, Claude redacta los puntos de cada jugador y las líneas
+    gratis; el resto, plantilla."""
+    if a.stat == "pts" or meta.get("free"):
+        return write_report(a, claude_client(), settings().anthropic_model, books=meta.get("books"))
+    return template_report(a)
+
+
 @app.post("/admin/board", dependencies=[Depends(require_admin)])
 def build_board(game_date: date, max_events: int | None = None, an: Analyzer = Depends(analyzer)):
     """Analiza todas las props de la jornada y las publica en la zona de partidos.
 
-    Consume créditos de The Odds API (4 por partido en "eu"). Para no disparar el coste,
-    Claude redacta los puntos de cada jugador y las líneas gratis; el resto, plantilla."""
+    Consume créditos de The Odds API (mercados x regiones por partido)."""
     results = scan_day(an, odds_client(), game_date, max_events=max_events)
-
-    def report(a, meta):
-        if a.stat == "pts" or meta.get("free"):
-            return write_report(a, claude_client(), settings().anthropic_model, books=meta.get("books"))
-        return template_report(a)
-
     with session_factory()() as session:
-        published = board.publish_board(session, results, game_date, settings().free_lines_per_day, report)
+        published = board.publish_board(session, results, game_date, settings().free_lines_per_day, board_report)
+        try:
+            moneyline.refresh(session, odds_client(), game_date, force=True)
+        except Exception:  # noqa: BLE001 - las cuotas a ganador son un extra
+            session.rollback()
         out = {"published": len(published), "free": sum(1 for p in published if p.free)}
     # Se publica la jornada una vez al día: aprovechamos para mandar los avisos de la prueba.
     out["trial_reminders"] = trial_reminders()["sent"]
@@ -469,6 +512,16 @@ def trial_reminders():
     return {"sent": sent}
 
 
+def start_auto_jornada():
+    s = settings()
+    if s.local_login and not s.local_login_enabled:
+        import logging
+
+        logging.getLogger("propdeep").warning("LOCAL_LOGIN se ignora: WEB_URL no es localhost")
+    if s.auto_jornada:
+        auto.start(session_factory(), lambda: (analyzer(), odds_client(), bdl_client(), board_report), s)
+
+
 # --- Ejemplo de mis picks con ayuda de la página ------------------------------------------
 
 PICKS_WARNING = "Resultados pasados no garantizan nada; a largo plazo es muy difícil ganar a la casa."
@@ -484,7 +537,7 @@ def require_pick_admin(user=Depends(current_user), x_admin_token: str = Header(d
 class PickRequest(BaseModel):
     line_id: int | None = None
     player_name: str | None = Field(default=None, max_length=120)
-    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m)$")
+    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m|ml)$")
     line: float | None = None
     side: str = Field(pattern="^(over|under)$")
     odds: float = Field(gt=1.0, le=50)
@@ -494,6 +547,32 @@ class PickRequest(BaseModel):
     commence_time: datetime | None = None
     home_team: str | None = Field(default=None, max_length=60)
     away_team: str | None = Field(default=None, max_length=60)
+    # Moneyline (stat "ml"): el partido de las cuotas a ganador y el equipo elegido.
+    event_id: str | None = Field(default=None, max_length=64)
+    team: str | None = Field(default=None, max_length=60)
+
+
+class ParlayLeg(BaseModel):
+    line_id: int | None = None
+    player_name: str | None = Field(default=None, max_length=120)
+    stat: str | None = Field(default=None, pattern="^(pts|reb|ast|fg3m|ml)$")
+    line: float | None = None
+    side: str = Field(pattern="^(over|under)$")
+    odds: float = Field(gt=1.0, le=50)
+    commence_time: datetime | None = None
+    home_team: str | None = Field(default=None, max_length=60)
+    away_team: str | None = Field(default=None, max_length=60)
+    # Moneyline (stat "ml"): el partido de las cuotas a ganador y el equipo elegido.
+    event_id: str | None = Field(default=None, max_length=64)
+    team: str | None = Field(default=None, max_length=60)
+
+
+class ParlayRequest(BaseModel):
+    legs: list[ParlayLeg] = Field(min_length=2, max_length=12)
+    odds: float | None = Field(default=None, gt=1.0, le=10000)
+    bookmaker: str = Field(max_length=60)
+    stake: float = Field(default=1.0, gt=0, le=10)
+    note: str | None = Field(default=None, max_length=280)
 
 
 class SettleRequest(BaseModel):
@@ -506,9 +585,13 @@ def list_picks():
     """Todos los picks de Gonza, ganados y perdidos, con su resumen. Público."""
     with session_factory()() as session:
         ps = picks.all_picks(session)
+        parlays = picks.all_parlays(session)
         return {
             "summary": picks.summary(ps),
             "picks": [picks.public(p) for p in ps],
+            "parlay_summary": picks.summary([p for p, _ in parlays]),
+            "parlays": [picks.public_parlay(p, legs) for p, legs in parlays],
+            "total": picks.summary([*ps, *(p for p, _ in parlays)]),
             "warning": PICKS_WARNING,
             "disclaimer": DISCLAIMER,
         }
@@ -524,6 +607,18 @@ def create_pick(req: PickRequest):
             raise HTTPException(422, str(exc)) from exc
 
 
+@app.post("/parlays", status_code=201, dependencies=[Depends(require_pick_admin)])
+def create_parlay(req: ParlayRequest):
+    """Publica una combinada antes de que empiece ninguno de sus partidos. No se edita."""
+    with session_factory()() as session:
+        try:
+            p = picks.create_parlay(session, [leg.model_dump() for leg in req.legs], req.bookmaker,
+                                    req.odds, req.stake, req.note)
+        except picks.PickError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return picks.public_parlay(p, picks.legs_of(session, p.id))
+
+
 @app.post("/picks/{pick_id}/settle", dependencies=[Depends(require_pick_admin)])
 def settle_pick(pick_id: int, req: SettleRequest):
     """Resultado de un pick que no sale de la zona de partidos (los demás se liquidan solos)."""
@@ -534,6 +629,70 @@ def settle_pick(pick_id: int, req: SettleRequest):
             raise HTTPException(404, str(exc)) from exc
         except picks.PickError as exc:
             raise HTTPException(409, str(exc)) from exc
+
+
+# --- Paper bets: bank simulado en euros (solo el autor) ------------------------------------
+
+class PaperBankRequest(BaseModel):
+    initial: float = Field(gt=0, le=1_000_000)
+    reset: bool = False
+
+
+class PaperBetRequest(PickRequest):
+    stake: float = Field(gt=0, le=100_000)  # euros
+
+
+class PaperParlayRequest(ParlayRequest):
+    stake: float = Field(gt=0, le=100_000)
+
+
+@app.get("/paper", dependencies=[Depends(require_pick_admin)])
+def paper_state():
+    with session_factory()() as session:
+        return {**paper.state(session), "disclaimer": DISCLAIMER}
+
+
+@app.post("/paper/bank", dependencies=[Depends(require_pick_admin)])
+def paper_bank(req: PaperBankRequest):
+    """Cambia el bank inicial; con `reset`, empieza de cero (lo anterior no se borra)."""
+    with session_factory()() as session:
+        paper.set_bank(session, req.initial, req.reset)
+        return paper.state(session)
+
+
+@app.post("/paper/bets", status_code=201, dependencies=[Depends(require_pick_admin)])
+def paper_bet(req: PaperBetRequest):
+    with session_factory()() as session:
+        try:
+            picks.create(session, {**req.model_dump(), "paper": True})
+        except picks.PickError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return paper.state(session)
+
+
+@app.post("/paper/parlays", status_code=201, dependencies=[Depends(require_pick_admin)])
+def paper_parlay(req: PaperParlayRequest):
+    with session_factory()() as session:
+        try:
+            picks.create_parlay(session, [leg.model_dump() for leg in req.legs], req.bookmaker,
+                                req.odds, req.stake, req.note, paper=True)
+        except picks.PickError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return paper.state(session)
+
+
+@app.delete("/paper/bets/{kind}/{bet_id}", dependencies=[Depends(require_pick_admin)])
+def paper_cancel(kind: str, bet_id: int):
+    if kind not in ("single", "parlay"):
+        raise HTTPException(404, "Apuesta no encontrada")
+    with session_factory()() as session:
+        try:
+            paper.cancel(session, kind, bet_id)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return paper.state(session)
 
 
 # --- Auditoría de tipsters ----------------------------------------------------------------
