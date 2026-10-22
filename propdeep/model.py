@@ -23,6 +23,22 @@ MAX_CONTEXT_ADJ = 0.05
 MIN_SEASON_GAMES_FOR_MINUTES = 5
 MAX_MINUTES_ADJ = 0.15
 
+# Tras un traspaso no hay jugada hasta tener estos partidos con el equipo nuevo.
+MIN_GAMES_NEW_TEAM = 5
+
+# Al empezar la temporada la proyección sale entera de la anterior. En la 2025-26 las dos primeras
+# semanas fueron las peores del modelo (-7 % y -9 % de ROI con peso 0,5, frente a -2 % el resto).
+MIN_SEASON_GAMES_FOR_PICK = 3
+
+# Compañero fuera: cuánto cambia el jugador en los partidos sin él (con su equipo actual), encogido
+# hacia 1 según la muestra y con tope. "Importante" = jugó 3 de los 5 últimos partidos del equipo
+# con 24 minutos o más de media: así solo cuentan las bajas nuevas, no las que ya están en las medias.
+KEY_TEAMMATE_MINUTES = 24.0
+MIN_GAMES_WITHOUT = 3
+MIN_GAMES_WITH = 5
+TEAMMATE_SHRINK = 8
+MAX_TEAMMATE_ADJ = 0.25
+
 
 @dataclass
 class Trends:
@@ -54,6 +70,12 @@ class Context:
     opponent_factor: float = 1.0
     injury_status: str | None = None
     injury_note: str | None = None
+    # Traspaso: el historial es sobre todo de su equipo anterior, con otro rol y otros minutos.
+    traded: bool = False
+    games_with_team: int | None = None
+    # Compañeros importantes que no juegan hoy: factor sobre la proyección y el detalle de cada uno.
+    teammate_factor: float = 1.0
+    teammates_out: list[dict] | None = None
 
 
 @dataclass
@@ -146,7 +168,37 @@ def project(stat: str, trends: Trends, context: Context) -> float:
 
     adj = (context.opponent_factor - 1) + (-0.02 if context.back_to_back else 0.0)
     adj = max(-MAX_CONTEXT_ADJ, min(MAX_CONTEXT_ADJ, adj))
-    return round(base * (1 + adj), 2)
+    return round(base * (1 + adj) * context.teammate_factor, 2)
+
+
+def is_key_teammate(team_last_games: list[int], played: dict[int, float]) -> bool:
+    """`team_last_games`: ids de los 5 últimos partidos del equipo; `played`: id -> minutos del compañero."""
+    mins = [played[g] for g in team_last_games if g in played]
+    return len(mins) >= 3 and mean(mins) >= KEY_TEAMMATE_MINUTES
+
+
+def teammate_out_factor(values: list[float], game_ids: list[int], days: list[str], team_ids: list[int | None],
+                        team_id: int | None, absent: dict[str, tuple[set[int], str]]) -> tuple[float, list[dict]]:
+    """Factor por compañeros fuera y su detalle.
+
+    values/game_ids/days/team_ids: historial del jugador (partido a partido). `absent`: nombre del
+    compañero -> (ids de los partidos que jugó con este equipo, fecha de su primer partido con él).
+    Solo cuentan los partidos del jugador con su equipo actual desde que llegó el compañero."""
+    factor, details = 1.0, []
+    for name, (played, since) in absent.items():
+        idx = [i for i, t in enumerate(team_ids) if t == team_id and days[i] >= since]
+        with_ = [values[i] for i in idx if game_ids[i] in played]
+        without = [values[i] for i in idx if game_ids[i] not in played]
+        detail = {"teammate": name, "games_with": len(with_), "games_without": len(without),
+                  "avg_with": _avg(with_), "avg_without": _avg(without), "factor": 1.0}
+        if len(without) >= MIN_GAMES_WITHOUT and len(with_) >= MIN_GAMES_WITH and mean(with_) > 0:
+            ratio = mean(without) / mean(with_)
+            f = 1 + (ratio - 1) * len(without) / (len(without) + TEAMMATE_SHRINK)
+            detail["factor"] = round(f, 3)
+            factor *= f
+        details.append(detail)
+    factor = max(1 - MAX_TEAMMATE_ADJ, min(1 + MAX_TEAMMATE_ADJ, factor))
+    return round(factor, 3), details
 
 
 def prob_over(stat: str, projection: float, sd: float, line: float) -> float:
@@ -236,6 +288,12 @@ def _blocking_reason(context: Context, trends: Trends) -> str | None:
         return f"Estado de lesión: {context.injury_status}. No analizamos jugadores en duda."
     if trends.games < 5:
         return "Menos de 5 partidos con minutos: muestra insuficiente."
+    if trends.season_games < MIN_SEASON_GAMES_FOR_PICK:
+        return (f"Lleva {trends.season_games} partidos esta temporada: el historial es de la anterior. "
+                f"Sin jugada hasta {MIN_SEASON_GAMES_FOR_PICK}.")
+    if context.traded and (context.games_with_team or 0) < MIN_GAMES_NEW_TEAM:
+        return (f"Ha cambiado de equipo y lleva {context.games_with_team or 0} partidos con el nuevo: "
+                "su historial es de otro rol.")
     return None
 
 
