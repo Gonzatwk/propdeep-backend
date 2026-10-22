@@ -51,6 +51,7 @@ export default function Header() {
           <NavLink to="/partidos" className={activo}>Partidos</NavLink>
           <NavLink to="/chat" className={(e) => `${activo(e)} hidden md:inline-block`}>Chat</NavLink>
           <NavLink to="/mis-picks" className={activo}>Mis picks</NavLink>
+          {usuario?.admin && <NavLink to="/paper-bets" className={activo}>Paper</NavLink>}
           <a href="/#precio" className={`${link} hidden md:inline-block`}>Precio</a>
           <NavLink to={usuario ? '/cuenta' : '/entrar'} className={activo} aria-label={usuario ? 'Mi cuenta' : 'Entrar'}>
             <UserCircle aria-hidden className="size-5 sm:hidden" />

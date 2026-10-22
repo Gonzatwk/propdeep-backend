@@ -49,8 +49,12 @@ export default function Entrar() {
     setEstado('enviando')
     recordar(params.get('siguiente'))
     try {
-      await api('/auth/login', { method: 'POST', body: { email: correo }, token: '' })
-      setEstado('enviado')
+      const r = await api('/auth/login', { method: 'POST', body: { email: correo }, token: '' })
+      // En el PC (LOCAL_LOGIN), el backend devuelve el token del enlace y se entra sin correo.
+      if (r?.token) {
+        setEstado('verificando')
+        navegar(`/entrar?token=${encodeURIComponent(r.token)}`, { replace: true })
+      } else setEstado('enviado')
     } catch (err) {
       setError(err.message)
       setEstado('formulario')

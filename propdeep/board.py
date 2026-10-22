@@ -77,14 +77,15 @@ def publish_board(
     free_quota: int,
     write_report: Callable[[Analysis, dict], str],
 ) -> list[Prediction]:
-    """Publica en el historial las líneas de la jornada que aún no estén (no se duplican)."""
+    """Publica en el historial las líneas de la jornada que aún no estén (no se duplican).
+    Una línea por jugador y estadística: si la casa la mueve, se queda la primera publicada."""
     existing = session.scalars(select(Prediction).where(Prediction.game_date == day.isoformat())).all()
-    seen = {(p.event_id, p.player_name, p.stat, p.line) for p in existing}
+    seen = {(p.event_id, p.player_name, p.stat) for p in existing}
     free_left = free_quota - sum(1 for p in existing if p.free)
 
     fresh: list[tuple[Analysis, dict]] = []
     for analysis, meta, prop in results:
-        key = (meta.get("event_id"), analysis.player, analysis.stat, analysis.line)
+        key = (meta.get("event_id"), analysis.player, analysis.stat)
         if key in seen:
             continue
         seen.add(key)
@@ -170,6 +171,30 @@ def line_detail(p: Prediction) -> dict:
     }
 
 
+def top_lines(lines: list[Prediction], subscriber: bool, limit: int = 40, now: datetime | None = None) -> list[dict]:
+    """Líneas de partidos por empezar con más distancia entre la proyección y la línea,
+    medida en desviaciones típicas del jugador (así puntos y triples se comparan bien).
+    Es un dato, no una recomendación: el backtest no mostró ventaja con la proyección sola.
+    Fuera los jugadores lesionados o con poca muestra, y las líneas bloqueadas."""
+    out = []
+    for p in lines:
+        a = p.analysis or {}
+        proj = a.get("projection")
+        if proj is None or a.get("reasons") or started(p, now) or not is_unlocked(p, subscriber, now):
+            continue
+        sd = max((a.get("trends") or {}).get("sd") or 0.0, 1.0)
+        diff = proj - p.line
+        out.append({
+            **line_summary(p, True),
+            "game": game_header(p),
+            "diff": round(diff, 2),
+            "diff_pct": round(diff / p.line, 4) if p.line else None,
+            "score": round(abs(diff) / sd, 3),
+            "direction": "over" if diff > 0 else "under",
+        })
+    return sorted(out, key=lambda x: -x["score"])[:limit]
+
+
 def game_header(p: Prediction) -> dict:
     start = _aware(p.commence_time)
     return {
@@ -188,6 +213,11 @@ def board_lines(session: Session, game_date: str | None = None, event_id: str | 
     if event_id:
         stmt = stmt.where(Prediction.event_id == event_id)
     return list(session.scalars(stmt.order_by(Prediction.commence_time, Prediction.player_name, Prediction.stat)))
+
+
+def published_events(session: Session, game_date: str) -> set[str]:
+    stmt = select(Prediction.event_id).where(Prediction.game_date == game_date, Prediction.event_id.is_not(None))
+    return set(session.scalars(stmt.distinct()))
 
 
 def board_dates(session: Session) -> list[str]:

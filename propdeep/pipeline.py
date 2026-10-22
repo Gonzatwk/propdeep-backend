@@ -221,11 +221,14 @@ def scan_day(
     day: date,
     max_events: int | None = None,
     log: Callable[[str], None] | None = None,
+    events: list[dict] | None = None,
 ) -> list[tuple[Analysis, dict, PropLine]]:
-    """Analiza la línea principal de cada jugador y mercado, con las de todas las casas."""
+    """Analiza la línea principal de cada jugador y mercado, con las de todas las casas.
+    Sin `events`, todos los partidos de la jornada."""
     log = log or (lambda _msg: None)
     results = []
-    events = odds.events_on(day)
+    if events is None:
+        events = odds.events_on(day)
     log(f"{len(events)} partidos en The Odds API para {day}")
     for event in events[:max_events]:
         grouped = main_lines(odds.player_props(event))

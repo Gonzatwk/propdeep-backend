@@ -19,19 +19,30 @@ def grade(side: str, line: float, actual: float) -> str:
 
 def settle(session: Session, bdl: BalldontlieClient) -> list:
     """Liquida las predicciones y los picks pendientes cuyo partido ya tiene estadísticas finales."""
-    from .picks import pending_with_game
+    from .picks import ML, pending_ml_unlinked, pending_with_game, refresh_parlays
 
+    _link_moneylines(session, bdl, pending_ml_unlinked(session))
     settled = []
     by_game: dict[int, list] = defaultdict(list)
     for p in [*pending(session), *pending_with_game(session)]:
         if p.game_id:
             by_game[p.game_id].append(p)
     for game_id, preds in by_game.items():
-        if str(bdl.game(game_id).get("status", "")).lower() != "final":
+        game = bdl.game(game_id)
+        if str(game.get("status", "")).lower() != "final":
+            continue
+        props = [p for p in preds if getattr(p, "stat", None) != ML]
+        for p in preds:
+            if getattr(p, "stat", None) == ML:
+                p.actual = _margin(p, game)
+                p.status = "void" if p.actual is None else grade("over", 0, p.actual)
+                p.settled_at = datetime.now(timezone.utc)
+                settled.append(p)
+        if not props:
             continue
         rows = bdl.game_stats(game_id)
         by_player = {r["player"]["id"]: r for r in rows}
-        for p in preds:
+        for p in props:
             row = by_player.get(p.player_id)
             if row is None or minutes(row.get("min")) == 0:
                 # No jugó: la apuesta se anula en las casas, aquí también.
@@ -42,7 +53,43 @@ def settle(session: Session, bdl: BalldontlieClient) -> list:
             p.settled_at = datetime.now(timezone.utc)
             settled.append(p)
     session.commit()
-    return settled
+    return settled + refresh_parlays(session)
+
+
+def _nickname(team: str | None) -> str:
+    return (team or "").strip().split(" ")[-1].lower()
+
+
+def _margin(pick, game: dict) -> float | None:
+    """Diferencia de puntos del equipo elegido (positiva si ganó)."""
+    home, away = game.get("home_team_score"), game.get("visitor_team_score")
+    if home is None or away is None:
+        return None
+    mine = _nickname(pick.player_name)
+    if mine == _nickname((game.get("home_team") or {}).get("full_name")):
+        return float(home - away)
+    if mine == _nickname((game.get("visitor_team") or {}).get("full_name")):
+        return float(away - home)
+    return None
+
+
+def _link_moneylines(session: Session, bdl, picks: list) -> None:
+    """Busca el partido de Balldontlie de las apuestas a ganador que aún no lo tienen."""
+    by_day = defaultdict(list)
+    for p in picks:
+        by_day[p.game_date].append(p)
+    for day, ps in by_day.items():
+        try:
+            games = bdl.games_on(datetime.fromisoformat(day).date())
+        except Exception:  # noqa: BLE001 - se reintenta en la próxima liquidación
+            continue
+        for p in ps:
+            home = _nickname(p.home_team)
+            for g in games:
+                if _nickname((g.get("home_team") or {}).get("full_name")) == home:
+                    p.game_id = g["id"]
+                    break
+    session.commit()
 
 
 def summary(predictions: list[Prediction]) -> dict:
