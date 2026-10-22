@@ -7,7 +7,7 @@ import { demoChat } from '../../data/demo'
 import { useCuenta } from '../../lib/cuenta'
 import { ErrorApi, api } from '../../lib/sesion'
 import { useModo } from '../../lib/tablero'
-import { nombreCasa } from '../../lib/zona'
+import { PRECIO, nombreCasa } from '../../lib/zona'
 
 const MAX_TEXTO = 2000 // el servidor no lee más por mensaje
 const MAX_HISTORIAL = 12 // mensajes previos que se reenvían
@@ -47,7 +47,7 @@ function Burbuja({ m }) {
   )
 }
 
-function Conversacion({ inicial, demo, quedanInicial, limite }) {
+function Conversacion({ inicial, demo, quedanInicial, limite, limitePro }) {
   const [mensajes, setMensajes] = useState(inicial)
   const [texto, setTexto] = useState('')
   const [pensando, setPensando] = useState(false)
@@ -157,6 +157,12 @@ function Conversacion({ inicial, demo, quedanInicial, limite }) {
         </div>
       </form>
       <p className="mt-3 text-xs text-muted">Enter para enviar, Mayús + Enter para otra línea. No guardamos tus conversaciones.</p>
+      {limitePro && (
+        <p className="mt-4 border border-gold px-4 py-3 text-sm">
+          {quedan === 0 ? 'Se te han acabado las preguntas de hoy. ' : ''}Con el plan Pro tienes {limitePro} preguntas al día por {PRECIO.pro} € al mes.{' '}
+          <Link to="/cuenta" className="font-semibold text-gold underline">Cámbiate en Mi cuenta, «Gestionar suscripción»</Link>
+        </p>
+      )}
     </>
   )
 }
@@ -219,7 +225,7 @@ function Contenido() {
   if (!chat.datos.enabled) {
     return <p className="mt-10 border border-gold px-5 py-4">El chat no está disponible ahora mismo. Vuelve a intentarlo más tarde.</p>
   }
-  return <Conversacion inicial={[]} quedanInicial={chat.datos.remaining} limite={chat.datos.limit} />
+  return <Conversacion inicial={[]} quedanInicial={chat.datos.remaining} limite={chat.datos.limit} limitePro={chat.datos.pro_limit} />
 }
 
 export default function Chat() {

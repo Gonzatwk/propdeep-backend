@@ -40,6 +40,15 @@ class User(Base):
     trial_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # monthly | yearly | pro (según el precio de la suscripción). El pase va aparte.
+    plan: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # Pase de 7 días (pago único): acceso hasta esta fecha, sin suscripción.
+    pass_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Pausa de cobros (en vez de cancelar): Stripe la reanuda sola en esta fecha.
+    paused_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Correo del día 5 de la prueba (solo uno por cuenta).
+    trial_reminder_sent: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class WaitlistEntry(Base):
@@ -164,9 +173,23 @@ def metrics(session: Session) -> dict:
         "paid": len(paid),
         "paid_after_trial": sum(1 for u in paid if u.trial_started_at),
         "trial_to_paid": round(sum(1 for u in paid if u.trial_started_at) / len(trials), 3) if trials else None,
-        "active_subscribers": sum(1 for u in users if is_subscriber(u) and u.subscription_status != "trialing"),
+        "active_subscribers": sum(1 for u in users if has_subscription(u) and u.subscription_status != "trialing"),
+        "pro": sum(1 for u in users if u.plan == "pro" and has_subscription(u)),
+        "paused": sum(1 for u in users if u.subscription_status == "paused"),
+        "passes_active": sum(1 for u in users if has_pass(u)),
         "canceled": sum(1 for u in users if u.canceled_at),
     }
+
+
+def trials_to_remind(session: Session, now: datetime | None = None) -> list[User]:
+    """Pruebas en su día 5 (o después) que aún no han recibido el aviso y no han terminado."""
+    now = now or _now()
+    users = session.scalars(select(User).where(User.subscription_status == "trialing",
+                                               User.trial_reminder_sent.is_not(True))).all()
+    return [u for u in users
+            if u.trial_started_at and _aware(u.trial_started_at) <= now - timedelta(days=4)
+            and (u.current_period_end is None or _aware(u.current_period_end) > now)
+            and not u.cancel_at_period_end]
 
 
 def delete_user(session: Session, user: User) -> None:
@@ -179,7 +202,12 @@ def delete_user(session: Session, user: User) -> None:
     session.commit()
 
 
-def is_subscriber(user: User | None) -> bool:
+def has_pass(user: User | None) -> bool:
+    end = _aware(user.pass_until) if user else None
+    return end is not None and end > _now()
+
+
+def has_subscription(user: User | None) -> bool:
     if user is None or user.subscription_status not in ACTIVE_STATUSES:
         return False
     end = _aware(user.current_period_end)
@@ -187,12 +215,21 @@ def is_subscriber(user: User | None) -> bool:
     return end is None or end + timedelta(days=1) > _now()
 
 
+def is_subscriber(user: User | None) -> bool:
+    """Acceso completo: suscripción activa (o en prueba) o un pase vigente."""
+    return has_subscription(user) or has_pass(user)
+
+
 def public_user(user: User) -> dict:
     end = _aware(user.current_period_end)
+    pass_end = _aware(user.pass_until)
     return {
         "email": user.email,
         "subscriber": is_subscriber(user),
         "status": user.subscription_status,
+        "plan": user.plan,
+        "pass_until": pass_end.isoformat() if has_pass(user) else None,
+        "paused_until": _aware(user.paused_until).isoformat() if user.paused_until and user.subscription_status == "paused" else None,
         "current_period_end": end.isoformat() if end else None,
         "cancel_at_period_end": user.cancel_at_period_end,
         "trial_available": not user.trial_used,

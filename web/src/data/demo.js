@@ -156,7 +156,7 @@ function resumen(l, abierta) {
     id: l.id, event_id: l.event_id, player: l.player, stat: l.stat, line: l.line, over_odds: l.over_odds,
     under_odds: l.under_odds, bookmaker: l.bookmaker, books_count: l.books_count, free: l.free, locked: !abierta,
   }
-  if (!abierta) return base
+  if (!abierta) return { ...base, teaser_games: 10 }
   return { ...base, projection: l.projection, hit_rates: l.hit_rates, best: l.best }
 }
 

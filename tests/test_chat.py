@@ -81,7 +81,7 @@ def test_chat_uses_the_tools_and_never_sees_the_verdict(api, monkeypatch, sub):
 
 def test_daily_limit_and_disabled_chat(api, monkeypatch, sub):
     _use(monkeypatch, FakeClaude(*[("end_turn", [_text("Hola.")])] * 3), chat_messages_per_day=2)
-    assert api.c.get("/chat", headers=sub).json() == {"enabled": True, "limit": 2, "remaining": 2}
+    assert api.c.get("/chat", headers=sub).json() == {"enabled": True, "limit": 2, "remaining": 2, "pro_limit": None}
     assert api.c.post("/chat", json=ASK, headers=sub).status_code == 200
     assert api.c.post("/chat", json=ASK, headers=sub).status_code == 200
     assert api.c.post("/chat", json=ASK, headers=sub).status_code == 429

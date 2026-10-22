@@ -7,6 +7,7 @@ import LaLinea from '../components/LaLinea'
 import { CONTACT_EMAIL } from '../config'
 import { FECHA_EJEMPLOS, informesLanding } from '../data/informes'
 import { fmtNum, fmtPct } from '../format'
+import { PRECIO, TEXTO_SUBIDA, subidaPendiente } from '../lib/zona'
 
 
 const preguntas = [
@@ -332,21 +333,22 @@ function Precio() {
         <div className="self-end">
           <p className="text-sm font-semibold">Después de la prueba</p>
           <dl className="mt-3 border-t-2 border-black">
-            <div className="flex items-baseline justify-between gap-6 border-b-2 border-black/30 py-5">
-              <dt>
-                <span className="text-lg font-semibold">Mensual</span>
-                <span className="block text-sm">Cancelas cuando quieras.</span>
-              </dt>
-              <dd className="display tnum shrink-0 text-5xl">15 €<span className="text-xl">/mes</span></dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-6 border-b-2 border-black/30 py-5">
-              <dt>
-                <span className="text-lg font-semibold">Anual</span>
-                <span className="block text-sm">Equivale a 10 € al mes.</span>
-              </dt>
-              <dd className="display tnum shrink-0 text-5xl">120 €<span className="text-xl">/año</span></dd>
-            </div>
+            {[
+              ['Mensual', 'Todo el análisis y 5 preguntas de chat al día.', PRECIO.mensual, '/mes'],
+              ['Pro', 'Todo, con el chat completo: 30 preguntas al día.', PRECIO.pro, '/mes'],
+              ['Anual', `4 meses gratis frente a pagar mes a mes.`, PRECIO.anual, '/año'],
+            ].map(([plan, detalle, precio, periodo]) => (
+              <div key={plan} className="flex items-baseline justify-between gap-6 border-b-2 border-black/30 py-5">
+                <dt>
+                  <span className="text-lg font-semibold">{plan}</span>
+                  <span className="block text-sm">{detalle}</span>
+                </dt>
+                <dd className="display tnum shrink-0 text-5xl">{precio} €<span className="text-xl">{periodo}</span></dd>
+              </div>
+            ))}
           </dl>
+          <p className="mt-4 text-sm">¿Solo una semana? Pase de 7 días por {PRECIO.pase} €, sin renovación.</p>
+          {subidaPendiente() && <p className="mt-4 border-2 border-black px-4 py-3 font-semibold">{TEXTO_SUBIDA}</p>}
           <p className="mt-6 text-sm leading-relaxed">
             Solo usamos tu correo para avisarte de la apertura. ¿Dudas? Escríbenos a{' '}
             <a className="font-semibold underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.

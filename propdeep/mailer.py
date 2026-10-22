@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 
 RESEND_URL = "https://api.resend.com/emails"
 FOOTER = "PropDeep · Análisis estadístico de player props de la NBA. Solo mayores de 18 años.\n"
+PLAN_NAMES = {"monthly": "mensual", "yearly": "anual", "pro": "Pro"}
 
 
 def _send_resend(settings, to: str, subject: str, body: str) -> bool:
@@ -65,4 +66,21 @@ def send_login_link(settings, to: str, link: str) -> None:
         "Pulsa este enlace para entrar en PropDeep. Caduca en 20 minutos y solo sirve una vez:\n\n"
         f"{link}\n\n"
         "Si no lo has pedido tú, ignora este correo.\n\n" + FOOTER
+    ))
+
+
+def send_trial_reminder(settings, to: str, *, ends: str, plan: str | None, lines: int, games: int) -> bool:
+    """Día 5 de la prueba: qué ha tenido estos días y cuándo se cobra. Cancelar, a un clic."""
+    plan_txt = f"el plan {PLAN_NAMES[plan]}" if plan in PLAN_NAMES else "tu plan"
+    used = (f"Estos días PropDeep ha analizado {lines} líneas de {games} partidos, todas a tu alcance.\n\n"
+            if lines else "")
+    return _send(settings, to, f"Tu prueba de PropDeep acaba el {ends}", (
+        "Hola:\n\n"
+        f"Te escribimos para que no te pille por sorpresa: tu prueba gratis acaba el {ends} "
+        f"y ese día se cobrará {plan_txt}.\n\n"
+        + used +
+        "Si te está sirviendo, no tienes que hacer nada. Si no, cancélala antes de esa fecha desde "
+        f"Mi cuenta > Gestionar suscripción ({settings.web_url}/cuenta) y no pagarás nada.\n\n"
+        "Recuerda: es información estadística, no garantiza ganar. Juega solo lo que puedas permitirte "
+        "perder (jugarbien.es).\n\n" + FOOTER
     ))

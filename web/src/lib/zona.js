@@ -13,7 +13,12 @@ export const resultado = (l) => {
   if (l.stat !== 'ml') return `hizo ${fmtNum(l.actual)}`
   return l.actual > 0 ? `ganó por ${fmtNum(l.actual)}` : `perdió por ${fmtNum(-l.actual)}`
 }
-export const PRECIO = { mensual: 15, anual: 120, prueba: 7 }
+export const PRECIO = { mensual: 15, anual: 120, pro: 25, pase: 5, prueba: 7 }
+// Subida anunciada del plan mensual. Quien se suscriba antes mantiene su precio mientras siga.
+// El día de la subida hay que crear el precio nuevo en Stripe y cambiar STRIPE_PRICE_MONTHLY.
+export const SUBIDA = { fecha: '2027-01-01', mensual: 19 }
+export const subidaPendiente = () => new Date() < new Date(`${SUBIDA.fecha}T00:00:00+01:00`)
+export const TEXTO_SUBIDA = `El 1 de enero el plan mensual sube a ${SUBIDA.mensual} €. Si entras antes, mantienes ${PRECIO.mensual} € mientras sigas suscrito.`
 
 // Nombre visible de cada casa (claves de The Odds API).
 const CASAS = {
