@@ -20,7 +20,8 @@ seguir midiéndolo (`/admin/predictions`).
    **Compañero fuera**: si el parte de lesiones da fuera o en duda a un compañero importante (jugó 3
    de los 5 últimos partidos del equipo con 24 minutos o más), la proyección se multiplica por la
    media del jugador sin él frente a con él (con su equipo actual), encogida según la muestra
-   (`n / (n + 8)`) y con tope del ±25 %. Hacen falta 3 partidos sin él y 5 con él.
+   (`n / (n + 8)`) y con tope del ±25 %. Hacen falta 3 partidos sin él y 5 con él. Solo cambia la
+   proyección con `TEAMMATE_ADJUST=1`; apagado, el análisis enseña igual la media con y sin él.
 4. **Probabilidad**: distribución normal (Poisson en triples) alrededor de la proyección,
    mezclada al 20 % con la probabilidad del mercado sin margen (`MODEL_WEIGHT`). En el backtest de
    la 2025-26 con cuotas reales, al 50 % perdía (-2,8 %); los datos le dan al modelo un 6-10 % de

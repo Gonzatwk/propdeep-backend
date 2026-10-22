@@ -15,7 +15,13 @@ OUT_STATUSES = ("out", "doubtful")
 
 
 class Analyzer:
-    def __init__(self, bdl: BalldontlieClient, season: int, min_edge: float, model_weight: float):
+    def __init__(self, bdl: BalldontlieClient, season: int, min_edge: float, model_weight: float,
+                 teammate_adjust: bool | None = None):
+        if teammate_adjust is None:
+            from .config import get_settings
+
+            teammate_adjust = get_settings().teammate_adjust
+        self.teammate_adjust = teammate_adjust
         self.bdl = bdl
         self.season = season
         self.min_edge = min_edge
@@ -66,9 +72,10 @@ class Analyzer:
             absent = {name: (played, since) for pid, (name, played, since)
                       in self._teammates_out(team_id, game_day).items() if pid != player["id"]}
             if absent:
-                context.teammate_factor, context.teammates_out = teammate_out_factor(
+                factor, context.teammates_out = teammate_out_factor(
                     values, [r["game"]["id"] for r in logs], [r["game"]["date"][:10] for r in logs],
                     [r["team"]["id"] for r in logs], team_id, absent)
+                context.teammate_factor = factor if self.teammate_adjust else 1.0
         opponent_id = None
         if game and team_id is not None:
             opponent_id = game["visitor_team"]["id"] if game["home_team"]["id"] == team_id else game["home_team"]["id"]

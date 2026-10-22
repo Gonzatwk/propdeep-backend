@@ -30,6 +30,10 @@ class Settings:
     min_edge: float = field(default_factory=lambda: _float("MIN_EDGE", 0.03))
     # Peso del modelo estadístico frente a la probabilidad del mercado (sin margen).
     model_weight: float = field(default_factory=lambda: _float("MODEL_WEIGHT", 0.2))
+    # Ajuste de la proyección por compañeros fuera. Apagado hasta validarlo con el backtest
+    # (scripts/analisis_companeros.py); apagado, el análisis enseña igual la media con y sin ellos.
+    teammate_adjust: bool = field(default_factory=lambda: os.getenv("TEAMMATE_ADJUST", "").strip().lower()
+                                  in ("1", "true", "si", "sí", "yes"))
     cors_origins: str = field(default_factory=lambda: os.getenv("CORS_ORIGINS", "*"))
     # Dirección pública de la web: para el enlace de acceso y las vueltas de Stripe.
     web_url: str = field(default_factory=lambda: os.getenv("WEB_URL", "https://propdeep.pages.dev").rstrip("/"))

@@ -231,8 +231,12 @@ def test_analyzer_adjusts_for_injured_key_teammate():
 
     bdl = WithInjury([25.0] * 20, DAY)
     bdl.rows = luka_rows
-    an = Analyzer(bdl, 2026, 0.03, 0.2)
+    an = Analyzer(bdl, 2026, 0.03, 0.2, teammate_adjust=True)
     result, _ = an.analyze_prop("Luka Doncic", "pts", 26.5, 1.9, 1.9, DAY)
     ctx = result.context
     assert ctx.teammates_out and ctx.teammates_out[0]["teammate"] == "Kyrie Irving"
     assert ctx.teammates_out[0]["games_without"] == 4 and ctx.teammate_factor > 1.1
+    # Apagado: se ve el desglose, pero la proyección no cambia.
+    off, _ = Analyzer(bdl, 2026, 0.03, 0.2, teammate_adjust=False).analyze_prop("Luka Doncic", "pts", 26.5, 1.9, 1.9, DAY)
+    assert off.context.teammates_out and off.context.teammate_factor == 1.0
+    assert off.projection < result.projection
