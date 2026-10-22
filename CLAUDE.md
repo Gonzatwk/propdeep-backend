@@ -38,12 +38,13 @@ propdeep/
   paper.py              "Paper bets": bank simulado en euros
   moneyline.py          cuotas a ganador
   chat.py               chat "Pregunta a PropDeep"
+  tipsters.py           auditoría de tipsters (privada hasta TIPSTERS_PUBLIC=true)
   accounts.py, billing.py, mailer.py  cuentas, Stripe y correo de acceso
 scripts/                utilidades por línea de comandos (ver sección 3)
 tests/                  pytest; tests/fakes.py simula las APIs (los tests no llaman a nada real)
 web/
-  src/pages/            Home, MisPicks, PaperBets, legales y zona/ (Partidos, Partido, Informe,
-                        Proyecciones, Chat, Cuenta, Entrar)
+  src/pages/            Home, MisPicks, PaperBets, Tipsters, legales y zona/ (Partidos, Partido,
+                        Informe, Proyecciones, Chat, Cuenta, Entrar, DatoDelDia)
   src/components/       piezas de la interfaz
   src/lib/              lógica de cliente (sesión, tablero, combinada, paper...)
   src/data/             datos de demo e informes de ejemplo
@@ -71,7 +72,7 @@ Arranque:
 - Web a mano: `cd web`, `npm run dev` (http://localhost:5173).
 - Build de la web: `cd web` y `npm run build` (salida `dist`). Lint de la web: `npm run lint` (oxlint).
 
-Tests (con el venv activado): `pytest`. Hoy pasan 84. Deben pasar antes de cada commit.
+Tests (con el venv activado): `pytest`. Hoy pasan 96. Deben pasar antes de cada commit.
 
 Scripts (con el venv activado, desde la raíz):
 - `python -m scripts.picks_hoy AAAA-MM-DD [--regions eu] [--casas bet365,williamhill] [--peso 0.2] [--max-events N] [--out archivo.csv]`: jornada en CSV con la mejor cuota. No usarlo con `AUTO_JORNADA=1`: paga las cuotas dos veces.
@@ -116,7 +117,7 @@ Scripts (con el venv activado, desde la raíz):
 - Web: componentes `.jsx` con nombres en español, lógica en `src/lib/`, lint con oxlint.
 - Tests: cada cambio de lógica lleva su test en `tests/`, usando `tests/fakes.py` en vez de APIs reales.
 - Configuración centralizada en `propdeep/config.py` (`get_settings()`); defaults de la web en `web/src/config.js`. Una variable nueva va también en `.env.example`.
-- Endpoints: públicos `/board`, `/board/games/{id}`, `/board/top`, `/board/lines/{id}`, `/picks`, `/waitlist`, `/chat`, `/auth/*`, `/me`. Admin con cabecera `x-admin-token` (`/admin/*`, p. ej. `POST /admin/board`). Picks y paper bets solo para correos de `ADMIN_EMAILS`.
+- Endpoints: públicos `/board`, `/board/games/{id}`, `/board/top`, `/board/lines/{id}`, `/picks`, `/tipsters`, `/waitlist`, `/chat`, `/auth/*`, `/me`. Admin con cabecera `x-admin-token` (`/admin/*`, p. ej. `POST /admin/board`). Picks y paper bets solo para correos de `ADMIN_EMAILS`.
 - Web sin cookies ni servicios o fuentes de terceros.
 - Diseño: llamativo, blanco y negro con campo de tiros dorado; nada de fondo oscuro con neón ni estética de plantilla.
 
@@ -135,10 +136,10 @@ Backend (ver `.env.example`):
 - `LOCAL_LOGIN`: entrar sin correo (solo con `WEB_URL` en localhost y para `ADMIN_EMAILS`).
 - `AUTO_JORNADA`, `AUTO_HOURS_BEFORE`, `AUTO_EVERY_MINUTES`: jornada automática.
 - `FREE_LINES_PER_DAY`: líneas gratis por jornada.
-- `CHAT_MESSAGES_PER_DAY`, `CHAT_EFFORT`, `CHAT_MODEL`: chat.
-- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`.
-- Correo: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`. Sin SMTP, el enlace de acceso sale en el log.
-- En PR abiertos, todavía NO en main: `RESEND_API_KEY` (PR #16); `STRIPE_PRICE_PRO`, `STRIPE_PRICE_PASS`, `CHAT_MESSAGES_PER_DAY_BASIC`, `TIPSTERS_PUBLIC` (PR #15).
+- `CHAT_MESSAGES_PER_DAY` (plan Pro), `CHAT_MESSAGES_PER_DAY_BASIC` (resto), `CHAT_EFFORT`, `CHAT_MODEL`: chat.
+- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`, `STRIPE_PRICE_PRO` (25 €/mes), `STRIPE_PRICE_PASS` (pase de 7 días, 5 €). Vacíos = no se ofrecen.
+- `TIPSTERS_PUBLIC`: enseña la auditoría de tipsters en la web.
+- Correo: `RESEND_API_KEY` (preferido; Railway Hobby bloquea el SMTP) o `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`; `MAIL_FROM`. Sin ninguno, el enlace de acceso sale en el log.
 
 Web (`web/.env.local` o el hosting):
 - `VITE_API_URL`: URL del backend. Vacía = datos de demo de `src/data/`.
@@ -150,8 +151,10 @@ Web (`web/.env.local` o el hosting):
 - Juego responsable visible y solo para mayores de 18.
 - Sin afiliación ni patrocinios de casas de apuestas (Ley 13/2011, RD 958/2020).
 - RGPD básico, sin datos innecesarios.
-- Negocio futuro: suscripción de 15 €/mes o 120 €/año con 7 días gratis y freemium de ~3 líneas al día. Preventa de 9 € eliminada.
-- Desde el 21-oct-2026: primero uso personal en local; el lanzamiento comercial (Stripe, Railway, correo, PR #15 y #16) está aplazado.
+- Negocio futuro: suscripción de 15 €/mes o 120 €/año con 7 días gratis, plan Pro de 25 €/mes, pase de 7 días a 5 € y freemium de ~3 líneas al día. Preventa de 9 € eliminada.
+- Subida anunciada en la web: el mensual pasa a 19 € el 1-ene-2027 (`SUBIDA` en `web/src/lib/zona.js`). Hay que cumplirla o quitar el aviso.
+- Desde el 21-oct-2026: primero uso personal en local; el lanzamiento comercial (Stripe, Railway, correo) está aplazado aunque el código ya esté en main.
+- Criterio de corte: tras 300 jugadas o el 31-dic-2026, ROI con la mejor cuota ≥ 0 → preparar el lanzamiento; negativo → herramienta personal y portafolio.
 - Solo NBA; nada de fútbol ni tenis hasta tener suscriptores.
 - Próximo en estudio: backtest de robos, tapones y PRA cuando se renueven los créditos.
 
