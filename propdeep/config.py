@@ -53,6 +53,8 @@ class Settings:
     smtp_user: str = field(default_factory=lambda: os.getenv("SMTP_USER", ""))
     smtp_password: str = field(default_factory=lambda: os.getenv("SMTP_PASSWORD", ""))
     mail_from: str = field(default_factory=lambda: os.getenv("MAIL_FROM", ""))
+    # Resend (correo por HTTPS): Railway Hobby bloquea el SMTP. Con clave, se usa en vez del SMTP.
+    resend_api_key: str = field(default_factory=lambda: os.getenv("RESEND_API_KEY", ""))
     # Uso personal en el PC: los correos de ADMIN_EMAILS entran sin enlace por correo.
     # Solo funciona si WEB_URL es localhost, para que no se cuele en producción.
     local_login: bool = field(default_factory=lambda: _flag("LOCAL_LOGIN"))
