@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 backtest_cache/
 backtest_out/
+instrucciones-proyecto.md
+revision_*.csv
