@@ -84,7 +84,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | ID | Tarea | Esfuerzo | Estado |
 |---|---|---|---|
-| 2.1 | Fórmula de la nota de 0 a 100 y su validación por deciles en la caché | M | PENDIENTE |
+| 2.1 | Fórmula de la nota de 0 a 100 y su validación por deciles en la caché | M | HECHO |
 | 2.2 | Feed en el backend: tarjetas con nota, probabilidad y razón; liquidación automática e historial | M | PENDIENTE |
 | 2.3 | Feed en la web | B-M | PENDIENTE |
 
@@ -153,3 +153,5 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | Bloque 1: `propdeep/fair.py` (precio justo, calibración Platt, distribución anclada) y `scripts/calibracion.py`. Mes a mes, la probabilidad estimada mejora por poco el log-loss del mercado (0,69156 frente a 0,69190; la mezcla al 20 % lo empeoraba: 0,69225). Con desviación × 1,06, la distribución anclada acierta mejor que las casas en 112.886 líneas alternativas. Resultados en PLAN-PLATAFORMA §2.4. Cada línea publicada guarda ya su estimación |
 | 24-oct-2026 | PR #23 (bloque 0) y #24 (bloque 1) abiertos con `gh` |
 | 24-oct-2026 | Fusionados el #23 (bloque 0) y el #25 (bloque 1, sustituye al #24, que GitHub cerró al borrarse la rama del bloque 0). `main` con 127 tests en verde |
+| 24-oct-2026 | Claude Code abre y fusiona el PR de cada bloque (decisión del autor). Bloque 2 empezado en `mvp/bloque-2` |
+| 24-oct-2026 | 2.1: `propdeep/nota.py` y `scripts/validar_nota.py`. Ninguna parte de la nota predice el resultado más allá del precio justo (PLAN §2.5): se dejan los pesos del plan y la nota es un resumen de los datos, no una ventaja. El 88 % de los lados son "menos" (95 % con nota ≥ 60) y la probabilidad estimada va del 48 % al 55 % |
