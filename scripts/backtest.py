@@ -36,7 +36,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from statistics import mean
 
-from propdeep.clients.balldontlie import BASE_URL as BDL_URL, minutes, normalize_name
+from propdeep.clients.balldontlie import BASE_URL as BDL_URL, canonical_name, minutes, normalize_name
 from propdeep.clients.odds import BASE_URL as ODDS_URL, MARKETS, SPORT, parse_all_props
 from propdeep.clients.odds import main_lines as production_main_lines
 from propdeep.model import Analysis, Context, analyze, compute_trends, is_key_teammate, prob_over, teammate_out_factor
@@ -430,7 +430,8 @@ class OddsHistory:
                 if not snap.get("data"):
                     continue
                 for prop in self.lines(snap["data"]):
-                    rows = [r for r in by_name.get(strip_suffix(prop.player or ""), []) if r.day == day]
+                    rows = [r for r in by_name.get(strip_suffix(canonical_name(prop.player or "")), [])
+                            if r.day == day]
                     if len(rows) == 1:  # si no jugó, la casa anula la apuesta: no cuenta
                         out.append(Candidate(rows[0], MARKETS[prop.market], prop.line,
                                              prop.over_odds, prop.under_odds, prop.bookmaker))
