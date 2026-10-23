@@ -19,7 +19,8 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | Siguiente | Estado |
 |---|---|
-| Bloque 0 en la rama `mvp/bloque-0` (un commit por tarea) | EN CURSO |
+| Fusionar el PR de `mvp/bloque-0` (bloque 0 completo) | PENDIENTE (lo fusiona el autor) |
+| Bloque 1: motor de probabilidad, en la rama `mvp/bloque-1` (sale de `mvp/bloque-0`) | EN CURSO |
 
 ## Fechas clave
 
@@ -68,7 +69,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 | 0.9 | Umbrales "X+" y líneas enteras bien tratados en `prob_over` | AUDIT M10 | B | HECHO |
 | 0.10 | Textos de la web: fuera "20 de octubre", las promesas no cubiertas y el aviso de subida | AUDIT S5, S6 | B | HECHO |
 | 0.11 | Avisos: +18, juego responsable (jugarbien.es, RGIAJ) y "no es consejo de apuestas" | PLAN §5 | B | HECHO |
-| 0.12 | CLAUDE.md con el nuevo enfoque: feed con nota, sin "EDGE", coordinación y ROADMAP | PLAN §0 | B | PENDIENTE |
+| 0.12 | CLAUDE.md con el nuevo enfoque: feed con nota, sin "EDGE", coordinación y ROADMAP | PLAN §0 | B | HECHO |
 
 ### Bloque 1: Motor de probabilidad (4-5 días)
 
@@ -148,3 +149,4 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | 0.9: líneas enteras sin contar el empuje como "menos" (`prob_push`) y `prob_at_least` para los hitos "X+". Las líneas ,5 dan exactamente lo mismo que antes (test fijado) |
 | 24-oct-2026 | 0.10: fuera los "20 de octubre" (la web dice que está en pruebas privadas), las promesas que el modelo no cumple (ritmo, posición, viajes, paliza) y el aviso de subida a 19 €. Al hacer el feed (2.3) habrá que cambiar la pregunta "¿Me vais a decir a qué apostar?" |
 | 24-oct-2026 | 0.11: el pie de página tiene el título visible "Juego responsable" y el aviso de autoexclusión en el RGIAJ de la DGOJ, además de +18, "no son recomendaciones" y jugarbien.es |
+| 24-oct-2026 | 0.12: CLAUDE.md al día (rumbo, documentos, endpoints, versión del modelo, liquidación, jornada automática, reglas de coordinación). Bloque 0 terminado |
