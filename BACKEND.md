@@ -41,7 +41,7 @@ seguir midiéndolo (`/admin/predictions`).
 | POST | `/picks/{id}/settle` | Resultado de un pick que no sale de la zona (los demás se liquidan solos) |
 | GET | `/admin/predictions` | Veredictos internos del modelo (no públicos) |
 | GET | `/admin/track-record` | Acierto y ROI de esos veredictos, para seguir midiendo el modelo |
-| POST | `/analyze` | Analiza una prop sin publicarla |
+| POST | `/admin/analyze` | Analiza una prop sin publicarla (admin: devuelve el veredicto interno) |
 | POST | `/admin/publish` | Analiza y publica en el historial (cabecera `x-admin-token`) |
 | GET | `/admin/scan?game_date=AAAA-MM-DD` | Analiza las props de la jornada con The Odds API |
 | POST | `/admin/settle` | Liquida predicciones y picks pendientes con el resultado real |

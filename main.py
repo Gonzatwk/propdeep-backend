@@ -122,9 +122,10 @@ def health():
     return {"ok": True}
 
 
-@app.post("/analyze")
+@app.post("/admin/analyze", dependencies=[Depends(require_admin)])
 def analyze_prop(req: PropRequest, an: Analyzer = Depends(analyzer)):
-    """Analiza una prop sin publicarla en el historial."""
+    """Analiza una prop sin publicarla en el historial. Solo admin: devuelve el veredicto interno
+    y cada llamada gasta Balldontlie y Claude."""
     analysis, report, _ = _run(req, an)
     return {"analysis": analysis, "report": report, "disclaimer": DISCLAIMER}
 
