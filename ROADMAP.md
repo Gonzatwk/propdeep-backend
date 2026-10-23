@@ -86,7 +86,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 |---|---|---|---|
 | 2.1 | Fórmula de la nota de 0 a 100 y su validación por deciles en la caché | M | HECHO |
 | 2.2 | Feed en el backend: tarjetas con nota, probabilidad y razón; liquidación automática e historial | M | HECHO |
-| 2.3 | Feed en la web | B-M | PENDIENTE |
+| 2.3 | Feed en la web | B-M | HECHO |
 
 ### Bloque 3: Tabla de props y fichas de jugador (6-7 días)
 
@@ -156,3 +156,4 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | Claude Code abre y fusiona el PR de cada bloque (decisión del autor). Bloque 2 empezado en `mvp/bloque-2` |
 | 24-oct-2026 | 2.1: `propdeep/nota.py` y `scripts/validar_nota.py`. Ninguna parte de la nota predice el resultado más allá del precio justo (PLAN §2.5): se dejan los pesos del plan y la nota es un resumen de los datos, no una ventaja. El 88 % de los lados son "menos" (95 % con nota ≥ 60) y la probabilidad estimada va del 48 % al 55 % |
 | 24-oct-2026 | 2.2: `propdeep/feed.py`. Al publicar, cada línea con nota ≥ 60 deja una tarjeta inmutable con hash (lado, nota, probabilidad, razones) que se liquida sola con los partidos. `GET /feed`: tarjetas de la jornada (bloqueadas sin suscripción: solo nota y partido) y cómo le ha ido al feed (acierto frente a probabilidad media dicha) |
+| 24-oct-2026 | 2.3: página `/jugadas` ("Mejores jugadas", también en la cabecera y en Partidos): tarjetas con nota, lado, probabilidad estimada, razones y resultado al liquidarse; las bloqueadas solo enseñan nota y partido. Pregunta "¿Me vais a decir a qué apostar?" al día. CLAUDE.md al día. Bloque 2 terminado |

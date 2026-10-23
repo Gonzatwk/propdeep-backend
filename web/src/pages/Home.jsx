@@ -19,7 +19,7 @@ const preguntas = [
 ]
 
 const faqs = [
-  ['¿Me vais a decir a qué apostar?', 'No. Te damos datos y análisis de cada línea para que decidas tú. No damos picks ni recomendaciones: la decisión y el riesgo son tuyos.'],
+  ['¿Me vais a decir a qué apostar?', 'No. Te damos los datos de cada línea y, en «Mejores jugadas», las ordenamos por una nota que los resume, con una probabilidad estimada a partir del mercado. No es una recomendación ni una garantía: la decisión y el riesgo son tuyos.'],
   ['¿Garantizáis ganancias?', 'No, y desconfía de quien lo haga. Es información orientativa. Apostar siempre implica riesgo de perder dinero y a largo plazo es muy difícil ganar a la casa.'],
   ['¿Qué es «Ejemplo de mis picks»?', 'Los picks del fundador hechos con ayuda de la página. Se publican antes del partido, no se editan y salen todos, también los fallados. Son suyos, no del modelo, y no garantizan nada.'],
   ['¿Puedo preguntarle cosas?', 'Sí. Con la suscripción tienes un chat en español para preguntar por los partidos y las líneas del día. Responde con los datos de PropDeep y no te dice qué apostar.'],
