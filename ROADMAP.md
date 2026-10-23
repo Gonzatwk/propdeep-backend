@@ -20,7 +20,8 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 | Siguiente | Estado |
 |---|---|
 | Fusionar el PR de `mvp/bloque-0` (bloque 0 completo) | PENDIENTE (lo fusiona el autor) |
-| Bloque 1: motor de probabilidad, en la rama `mvp/bloque-1` (sale de `mvp/bloque-0`) | EN CURSO |
+| Fusionar el PR de `mvp/bloque-1` (después del de `mvp/bloque-0`, del que sale) | PENDIENTE (lo fusiona el autor) |
+| Bloque 2: nota y feed de mejores jugadas | SIGUIENTE |
 
 ## Fechas clave
 
@@ -75,10 +76,11 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | ID | Tarea | Esfuerzo | Estado |
 |---|---|---|---|
-| 1.1 | Precio justo por línea: consenso sin margen, o Pinnacle si está | B | PENDIENTE |
-| 1.2 | Calibración Platt mes a mes (α, β) con su script y tests | M | PENDIENTE |
-| 1.3 | Distribución anclada al mercado para cualquier umbral | M | PENDIENTE |
-| 1.4 | Validación en la caché (líneas principales y alternativas de Bovada y BetRivers). Informe con log-loss y fiabilidad | M | PENDIENTE |
+| 1.1 | Precio justo por línea: consenso sin margen, o Pinnacle si está | B | HECHO |
+| 1.2 | Calibración Platt mes a mes (α, β) con su script y tests | M | HECHO |
+| 1.3 | Distribución anclada al mercado para cualquier umbral | M | HECHO |
+| 1.4 | Validación en la caché (líneas principales y alternativas de Bovada y BetRivers). Informe con log-loss y fiabilidad | M | HECHO |
+| 1.5 | Guardar el precio justo y la probabilidad estimada en cada línea publicada (`analysis.estimate`), sin enseñarlos todavía | B | HECHO |
 
 ### Bloque 2: Nota y feed de mejores jugadas (4 días)
 
@@ -150,3 +152,4 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | 0.10: fuera los "20 de octubre" (la web dice que está en pruebas privadas), las promesas que el modelo no cumple (ritmo, posición, viajes, paliza) y el aviso de subida a 19 €. Al hacer el feed (2.3) habrá que cambiar la pregunta "¿Me vais a decir a qué apostar?" |
 | 24-oct-2026 | 0.11: el pie de página tiene el título visible "Juego responsable" y el aviso de autoexclusión en el RGIAJ de la DGOJ, además de +18, "no son recomendaciones" y jugarbien.es |
 | 24-oct-2026 | 0.12: CLAUDE.md al día (rumbo, documentos, endpoints, versión del modelo, liquidación, jornada automática, reglas de coordinación). Bloque 0 terminado |
+| 24-oct-2026 | Bloque 1: `propdeep/fair.py` (precio justo, calibración Platt, distribución anclada) y `scripts/calibracion.py`. Mes a mes, la probabilidad estimada mejora por poco el log-loss del mercado (0,69156 frente a 0,69190; la mezcla al 20 % lo empeoraba: 0,69225). Con desviación × 1,06, la distribución anclada acierta mejor que las casas en 112.886 líneas alternativas. Resultados en PLAN-PLATAFORMA §2.4. Cada línea publicada guarda ya su estimación |

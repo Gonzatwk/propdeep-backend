@@ -124,6 +124,46 @@ Nos separamos de RotoBot en una cosa: su "edge" de modelo contra línea es la se
 - Se apunta antes de mirar el resultado.
 - Se guarda la versión en cada predicción (AUDIT C2).
 
+### 2.4 Resultados de la validación (24-oct-2026)
+
+Datos: caché del backtest de 2025-26, solo puntos, 8 casas de EE. UU., cuotas 60 min antes. Se reproducen con `python -m scripts.calibracion` y `python -m scripts.calibracion --alternativas` (0 créditos).
+
+**Líneas principales.** 17.549 líneas. Cada mes se ajusta solo con los meses anteriores y se mide el log-loss (menos es mejor):
+
+| Probabilidad | Total (n = 13.023) | 1.ª mitad | 2.ª mitad |
+|---|---|---|---|
+| Mercado (consenso sin margen) | 0,69190 | 0,69174 | 0,69207 |
+| **Estimada (Platt)** | **0,69156** | **0,69104** | 0,69212 |
+| Mezcla actual al 20 % | 0,69225 | 0,69142 | 0,69314 |
+
+- **[Hecho]** Parámetros con toda la temporada: α = −0,0315 (leve sesgo hacia el menos) y β = 0,0623. Ya están en `propdeep/fair.py`.
+- **[Hecho]** Está calibrada: dice 48,0 % y pasa el 47,6 %; dice 51,4 % y pasa el 51,5 %.
+- **[Hecho]** Gana al mercado por muy poco, con mejora en la 1.ª mitad y empate en la 2.ª. La mezcla al 20 % de hoy es peor que el mercado solo.
+- **[Opinión]** En la práctica, la probabilidad estimada es la del mercado con una inclinación honesta: no esconde una ventaja.
+
+**Líneas alternativas (distribución anclada).** 112.886 cuotas de 15.767 jugador-partido; casi todas de Bovada y BetRivers.
+
+| Probabilidad en la línea alternativa | Log-loss | 1.ª mitad | 2.ª mitad |
+|---|---|---|---|
+| La propia casa, sin margen | 0,66460 | 0,66435 | 0,66488 |
+| Anclada, desviación × 1,00 | 0,66345 | 0,66376 | 0,66312 |
+| **Anclada, desviación × 1,06 (elegida)** | **0,66337** | **0,66371** | **0,66301** |
+| Anclada, desviación × 1,12 | 0,66344 | 0,66381 | 0,66306 |
+
+Por distancia a la línea principal:
+
+| Línea alternativa | n | Anclada dice | Pasa | La casa dice |
+|---|---|---|---|---|
+| 2,5 a 5,5 puntos por debajo | 10.592 | 66,6 % | 66,9 % | 66,6 % |
+| 0,5 a 2,5 por debajo | 42.879 | 56,9 % | 57,2 % | 57,4 % |
+| 0,5 a 2,5 por encima | 43.598 | 41,4 % | 40,9 % | 42,9 % |
+| 2,5 a 5,5 por encima | 15.687 | 32,0 % | 29,7 % | 33,6 % |
+
+- **[Hecho]** La distribución anclada da la probabilidad de cualquier umbral ("20+", "más de 25,5") mejor que las propias casas, en las dos mitades. El generador de combinadas puede calcular las patas "X+" sin pagar los mercados alternativos.
+- **[Hecho]** Los "más" en líneas por encima de la principal salen caros en las casas: dicen un 33,6 % y pasa el 29,7 %. Por debajo de la principal, la casa acierta.
+- **[Opinión]** El generador no debe proponer "más" en umbrales altos. Las patas conservadoras (umbrales bajos) no están mal pagadas.
+- **Límites:** solo puntos, casas de EE. UU. y foto a 60 min. Para rebotes, asistencias y triples se usa lo mismo hasta tener datos. Desde el 24-oct cada línea publicada guarda su estimación (`analysis.estimate`) para poder validarlo con datos reales.
+
 ---
 
 ## 3. Creador de combinadas (al estilo de RotoBot)
