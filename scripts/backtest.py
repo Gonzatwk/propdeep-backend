@@ -37,7 +37,8 @@ from pathlib import Path
 from statistics import mean
 
 from propdeep.clients.balldontlie import BASE_URL as BDL_URL, minutes, normalize_name
-from propdeep.clients.odds import BASE_URL as ODDS_URL, MARKETS, SPORT, parse_props
+from propdeep.clients.odds import BASE_URL as ODDS_URL, MARKETS, SPORT, parse_all_props
+from propdeep.clients.odds import main_lines as production_main_lines
 from propdeep.model import Analysis, Context, analyze, compute_trends, is_key_teammate, prob_over, teammate_out_factor
 
 MIN_OPPONENT_GAMES = 5  # igual que en propdeep/pipeline.py
@@ -353,6 +354,7 @@ class OddsHistory:
         self.max_credits = max_credits
         self.minutes_before = minutes_before
         self.all_books = False  # True: la línea principal de cada casa, no solo una por jugador
+        self.offline = False  # True: solo la caché; lo que no esté se salta sin pedirlo (0 créditos)
         self.spent = 0
         self.remaining: str | None = None
 
@@ -361,7 +363,7 @@ class OddsHistory:
         f = self.cache / "odds" / (key.replace(":", "").replace(",", "+") + ".json")
         if f.exists():
             return json.loads(f.read_text(encoding="utf-8"))
-        if self.spent + cost_estimate > self.max_credits:
+        if self.offline or self.spent + cost_estimate > self.max_credits:
             return None
         import httpx
 
@@ -411,6 +413,8 @@ class OddsHistory:
             }, 1)
             if events is None:
                 complete = False
+                if self.offline:
+                    continue
                 break
             for ev in events.get("data") or []:
                 tip = datetime.fromisoformat(ev["commence_time"].replace("Z", "+00:00"))
@@ -420,24 +424,38 @@ class OddsHistory:
                 }, 10 * len(markets) * len(self.regions.split(",")))
                 if snap is None:
                     complete = False
+                    if self.offline:
+                        continue
                     break
                 if not snap.get("data"):
                     continue
-                for prop in main_lines(parse_props(snap["data"]), self.all_books):
+                for prop in self.lines(snap["data"]):
                     rows = [r for r in by_name.get(strip_suffix(prop.player or ""), []) if r.day == day]
                     if len(rows) == 1:  # si no jugó, la casa anula la apuesta: no cuenta
                         out.append(Candidate(rows[0], MARKETS[prop.market], prop.line,
                                              prop.over_odds, prop.under_odds, prop.bookmaker))
-            if not complete:
+            if not complete and not self.offline:
                 break
             print(f"  {day}: {len(out)} líneas acumuladas, {self.spent} créditos gastados")
         return out, complete
+
+    def lines(self, payload: dict) -> list:
+        """Las líneas que se analizan de un partido.
+
+        Normal: la principal de cada jugador elegida igual que en producción (la que ofrecen más
+        casas, con la cuota de la casa con menos margen). Con all_books: la principal de CADA casa,
+        a partir de todas sus cuotas (antes se quedaba una sola casa por línea)."""
+        props = parse_all_props(payload)
+        if self.all_books:
+            return main_lines(props, by_book=True)
+        return [main for main, _ in production_main_lines(props)]
 
 
 def main_lines(props, by_book: bool = False):
     """De todas las líneas de un jugador y mercado, la principal: la más cercana al 50/50.
 
-    Con by_book, la principal de cada casa (para comparar casas y buscar la mejor cuota).
+    Con by_book, la principal de cada casa (para comparar casas y buscar la mejor cuota). Hay que
+    pasarle todas las cuotas (parse_all_props), no una por línea.
     """
     best = {}
     for p in props:
@@ -657,6 +675,8 @@ def main() -> None:
     parser.add_argument("--estimar", action="store_true", help="Solo calcula los créditos necesarios")
     parser.add_argument("--todas-casas", action="store_true",
                         help="odds-api: una fila por casa (sale de la caché, no gasta créditos de más)")
+    parser.add_argument("--solo-cache", action="store_true",
+                        help="odds-api: usa solo lo ya descargado; no gasta ni un crédito")
     parser.add_argument("--sin-companeros", action="store_true",
                         help="Sin el ajuste por compañeros fuera (para comparar)")
     parser.add_argument("--cache", default="backtest_cache")
@@ -685,14 +705,15 @@ def main() -> None:
               " (lo ya descargado en caché no se vuelve a pagar)")
         if args.estimar:
             return
-        if not args.max_creditos:
-            raise SystemExit("Pon --max-creditos para no gastar más de la cuenta.")
+        if not args.max_creditos and not args.solo_cache:
+            raise SystemExit("Pon --max-creditos para no gastar más de la cuenta (o --solo-cache).")
         hist = OddsHistory(s.odds_api_key, cache, args.regiones, markets, args.max_creditos, args.minutos_antes)
         hist.all_books = args.todas_casas
+        hist.offline = args.solo_cache
         cands, complete = hist.candidates(season, days, stats)
         print(f"Créditos gastados: {hist.spent}; quedan en la cuenta: {hist.remaining}")
         if not complete:
-            print("Tope de créditos alcanzado: el backtest cubre solo las jornadas descargadas.")
+            print("Faltan partidos (tope de créditos o --solo-cache): el backtest cubre solo lo descargado.")
 
     results = evaluate(season, cands, s.min_edge, s.model_weight, companeros=not args.sin_companeros)
     summary = summarize(results)
