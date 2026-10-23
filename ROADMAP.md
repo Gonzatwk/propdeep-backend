@@ -65,7 +65,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 | 0.6 | Jornada automática: volver a los partidos publicados a medias y no repetir sin fin los que no tienen líneas | AUDIT C5 | M | HECHO |
 | 0.7 | Alias de nombres (Herb Jones, Bones Hyland, Moe Wagner…) | AUDIT C6 | B | HECHO |
 | 0.8 | Errores registrados y `KeyError` de datos externos controlados en `scan_day` y en la liquidación | AUDIT C7 | B | HECHO |
-| 0.9 | Umbrales "X+" y líneas enteras bien tratados en `prob_over` | AUDIT M10 | B | PENDIENTE |
+| 0.9 | Umbrales "X+" y líneas enteras bien tratados en `prob_over` | AUDIT M10 | B | HECHO |
 | 0.10 | Textos de la web: fuera "20 de octubre", las promesas no cubiertas y el aviso de subida | AUDIT S5, S6 | B | PENDIENTE |
 | 0.11 | Avisos: +18, juego responsable (jugarbien.es, RGIAJ) y "no es consejo de apuestas" | PLAN §5 | B | PENDIENTE |
 | 0.12 | CLAUDE.md con el nuevo enfoque: feed con nota, sin "EDGE", coordinación y ROADMAP | PLAN §0 | B | PENDIENTE |
@@ -145,3 +145,4 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | 0.6: la jornada automática apunta cada petición de cuotas (`event_scans`). Un partido sin líneas o con mercados sin colgar se repasa a 3 h y a 1 h del inicio (máximo 3 peticiones, no una cada 20 min); un partido que falla no frena a los demás |
 | 24-oct-2026 | 0.7: alias de 7 apodos sacados de la caché (Ace Bailey, Herb Jones, Bones Hyland…); `find_player` busca por el apellido sin sufijo ("Jaren Jackson Jr." ya no busca "Jr."); el backtest usa los mismos alias |
 | 24-oct-2026 | 0.8: cuotas rotas de The Odds API se saltan sin tumbar el partido; un fallo inesperado en una prop no corta la jornada; los errores que antes se tragaban ahora quedan en el log |
+| 24-oct-2026 | 0.9: líneas enteras sin contar el empuje como "menos" (`prob_push`) y `prob_at_least` para los hitos "X+". Las líneas ,5 dan exactamente lo mismo que antes (test fijado) |
