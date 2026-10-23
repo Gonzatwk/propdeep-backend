@@ -230,3 +230,54 @@ def test_teammate_out_raises_projection_when_star_sits():
     assert con.analysis.context.teammate_factor > 1.2
     assert con.analysis.projection > sin.analysis.projection
     assert con.p_model_base == pytest.approx(sin.analysis.prob_over_model, abs=1e-3)
+
+
+def _history_with_books(tmp_path, books, calls=None):
+    """OddsHistory con un partido de 'Jugador 2' y las casas dadas: [(casa, línea, más, menos)]."""
+    import httpx
+
+    from scripts.backtest import OddsHistory
+
+    day = (START + timedelta(days=20)).isoformat()
+
+    def handler(request):
+        if calls is not None:
+            calls.append(request.url.path)
+        if request.url.path.endswith("/events"):
+            return httpx.Response(200, json={"data": [{"id": "ev1", "commence_time": f"{day}T23:30:00Z"}]})
+        bookmakers = [{"key": k, "markets": [{"key": "player_points", "outcomes": [
+            {"name": "Over", "description": "Jugador 2", "point": line, "price": o},
+            {"name": "Under", "description": "Jugador 2", "point": line, "price": u}]}]}
+            for k, line, o, u in books]
+        return httpx.Response(200, json={"data": {"id": "ev1", "commence_time": f"{day}T23:30:00Z",
+                                                  "home_team": "Home", "away_team": "Away",
+                                                  "bookmakers": bookmakers}})
+
+    h = OddsHistory("k", tmp_path, "us", ["player_points"], 100)
+    h.http = httpx.Client(base_url="https://x", transport=httpx.MockTransport(handler))
+    return h, day
+
+
+def test_all_books_keeps_every_bookmaker_even_on_the_same_line(tmp_path):
+    # Antes, --todas-casas se quedaba con una sola casa por línea (la de menos margen).
+    books = [("dk", 15.5, 1.90, 1.90), ("fd", 15.5, 1.95, 1.87), ("mgm", 16.5, 2.0, 1.8)]
+    h, day = _history_with_books(tmp_path, books)
+    h.all_books = True
+    cands, _ = h.candidates(synthetic_season(), [day], ["pts"])
+    assert sorted((c.bookmaker, c.line) for c in cands) == [("dk", 15.5), ("fd", 15.5), ("mgm", 16.5)]
+
+
+def test_default_mode_picks_the_main_line_like_production(tmp_path):
+    # La línea que ofrecen más casas (15,5), con la cuota de la casa con menos margen (dk).
+    books = [("dk", 15.5, 1.90, 1.90), ("fd", 15.5, 1.95, 1.80), ("mgm", 16.5, 1.92, 1.92)]
+    h, day = _history_with_books(tmp_path, books)
+    cands, _ = h.candidates(synthetic_season(), [day], ["pts"])
+    assert [(c.bookmaker, c.line) for c in cands] == [("dk", 15.5)]
+
+
+def test_offline_mode_never_calls_the_api(tmp_path):
+    calls = []
+    h, day = _history_with_books(tmp_path, [("dk", 15.5, 1.9, 1.9)], calls)
+    h.offline = True
+    cands, complete = h.candidates(synthetic_season(), [day], ["pts"])
+    assert cands == [] and not complete and calls == [] and h.spent == 0

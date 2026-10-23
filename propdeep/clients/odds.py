@@ -144,18 +144,27 @@ def book_rows(rows: list[PropLine]) -> list[dict]:
 
 
 def parse_all_props(payload: dict) -> list[PropLine]:
-    """Todas las líneas: una por (casa, mercado, jugador, línea) con su más y su menos."""
+    """Todas las líneas: una por (casa, mercado, jugador, línea) con su más y su menos.
+
+    Lo que venga incompleto o raro (sin casa, sin jugador, cuota no numérica) se salta: una
+    cuota rota no debe tumbar un partido ya pagado."""
     pairs: dict[tuple, dict] = {}
-    for book in payload.get("bookmakers", []):
-        for market in book.get("markets", []):
-            if market.get("key") not in MARKETS:
+    for book in payload.get("bookmakers") or []:
+        for market in book.get("markets") or []:
+            if market.get("key") not in MARKETS or not book.get("key"):
                 continue
-            for outcome in market.get("outcomes", []):
+            for outcome in market.get("outcomes") or []:
                 side = str(outcome.get("name", "")).lower()
-                if side not in ("over", "under") or outcome.get("point") is None:
+                player = outcome.get("description")
+                if side not in ("over", "under") or not player:
                     continue
-                key = (book["key"], market["key"], outcome.get("description"), float(outcome["point"]))
-                pairs.setdefault(key, {})[side] = float(outcome["price"])
+                try:
+                    point, price = float(outcome["point"]), float(outcome["price"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if price <= 1.0:
+                    continue
+                pairs.setdefault((book["key"], market["key"], player, point), {})[side] = price
 
     out: list[PropLine] = []
     for (bookmaker, market, player, line), prices in pairs.items():

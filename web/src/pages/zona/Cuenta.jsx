@@ -2,7 +2,7 @@ import { CheckCircle } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { AvisoResponsable, Cargando, Pagina } from '../../components/Zona'
-import { PRECIO, TEXTO_SUBIDA, subidaPendiente } from '../../lib/zona'
+import { PRECIO } from '../../lib/zona'
 import { API_URL } from '../../config'
 import { useCuenta } from '../../lib/cuenta'
 import { api } from '../../lib/sesion'
@@ -31,7 +31,6 @@ function Planes({ elegido, setElegido, conPrueba, disponibles = TODOS }) {
       {disponibles.includes('pro') && plan('pro', 'Pro', `${PRECIO.pro} €`, 'Al mes. Todo el análisis y el chat completo, 30 preguntas al día.')}
       {disponibles.includes('yearly') && plan('yearly', 'Anual', `${PRECIO.anual} €`, `Al año. 4 meses gratis frente a pagar mes a mes (${PRECIO.mensual * 12} €).`)}
       {disponibles.includes('pass') && plan('pass', 'Pase de 7 días', `${PRECIO.pase} €`, 'Pago único. Sin renovación y sin prueba gratis.')}
-      {subidaPendiente() && disponibles.includes('monthly') && <p className="pt-1 text-sm font-semibold">{TEXTO_SUBIDA}</p>}
     </fieldset>
   )
 }
@@ -61,14 +60,14 @@ function BotonPago({ plan, prueba, ocupado, pagar }) {
   )
 }
 
-// Sin servidor (antes del 20 de octubre) o en la demostración: planes sin botón de pago.
+// Sin servidor (mientras no abra) o en la demostración: planes sin botón de pago.
 function Proximamente() {
   const [elegido, setElegido] = useState('monthly')
   return (
     <Pagina ancho="max-w-2xl">
       <h1 className="display text-[3rem] leading-none sm:text-[4rem]">Suscripción</h1>
       <p className="mt-4 text-lg text-muted">
-        El análisis de todas las líneas de cada partido: proyección, veces que superó la línea, casa y fuera, rival, líneas de cada casa e informe. Abre el 20 de octubre, con la temporada.
+        El análisis de todas las líneas de cada partido: proyección, veces que superó la línea, casa y fuera, rival, líneas de cada casa e informe. Está en pruebas privadas: te avisamos cuando abra.
       </p>
       <div className="mt-8"><Planes elegido={elegido} setElegido={setElegido} conPrueba /></div>
       <Link to="/#avisame" className="btn btn-gold mt-6 h-12 px-6 text-lg">Avísame cuando abra</Link>

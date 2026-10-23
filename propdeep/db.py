@@ -49,6 +49,9 @@ class Prediction(Base):
     away_team: Mapped[str | None] = mapped_column(String(60), nullable=True)
     # Línea visible gratis (unas pocas al día); el resto solo con suscripción.
     free: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Versión y parámetros del modelo (model.model_version). Vacío en las anteriores al 24-oct-2026,
+    # que se hicieron con peso 0,5 y sin el bloqueo de 3 partidos: no se mezclan al medir.
+    model_version: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
 
 
 def make_session_factory(url: str) -> sessionmaker[Session]:
@@ -58,7 +61,7 @@ def make_session_factory(url: str) -> sessionmaker[Session]:
         if url.startswith(prefix):
             url = "postgresql+psycopg://" + url[len(prefix):]
     engine = create_engine(url, connect_args=connect_args)
-    from . import accounts, chat, moneyline, paper, picks, tipsters  # noqa: F401 - registra sus tablas en Base
+    from . import accounts, board, chat, moneyline, paper, picks, tipsters  # noqa: F401 - registra sus tablas en Base
     Base.metadata.create_all(engine)
     _add_missing_columns(engine)
     return sessionmaker(engine, expire_on_commit=False)
@@ -84,6 +87,36 @@ def content_hash(payload: dict) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def _record(p: Prediction) -> dict:
+    """Lo que cubre el hash, sacado de una predicción guardada (ver `publish`)."""
+    record = {
+        "game_date": p.game_date,
+        "game_id": p.game_id,
+        "player_id": p.player_id,
+        "player_name": p.player_name,
+        "stat": p.stat,
+        "line": p.line,
+        "side": p.side,
+        "odds": p.odds,
+        "bookmaker": p.bookmaker,
+        "prob": p.prob,
+        "edge": p.edge,
+        "confidence": p.confidence,
+        "report": p.report,
+    }
+    if p.model_version is not None:
+        record["model_version"] = p.model_version
+    return record
+
+
+def verify(p: Prediction) -> bool:
+    """True si la predicción sigue tal como se publicó (su hash coincide con su contenido)."""
+    published = p.published_at
+    if published.tzinfo is None:  # SQLite devuelve la fecha sin zona: se guardó en UTC
+        published = published.replace(tzinfo=timezone.utc)
+    return content_hash({**_record(p), "published_at": published.isoformat()}) == p.content_hash
+
+
 def publish(session: Session, *, analysis: dict, report: str, meta: dict, commit: bool = True) -> Prediction:
     side = analysis["side"]
     p_over = analysis["prob_over_final"]
@@ -102,6 +135,8 @@ def publish(session: Session, *, analysis: dict, report: str, meta: dict, commit
         "confidence": analysis["confidence"],
         "report": report,
     }
+    if meta.get("model_version"):
+        record["model_version"] = meta["model_version"]
     published_at = datetime.now(timezone.utc)
     prediction = Prediction(
         **record,

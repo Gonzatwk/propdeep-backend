@@ -30,9 +30,17 @@ BODY = {"player": "Luka Doncic", "stat": "pts", "line": 27.5, "over_odds": 1.9,
         "under_odds": 1.9, "game_date": DAY.isoformat(), "bookmaker": "bookB"}
 
 
+def test_analyze_is_admin_only(client):
+    c, _ = client
+    # Devuelve el veredicto interno y gasta APIs de pago: nunca público.
+    assert c.post("/analyze", json=BODY).status_code == 404
+    assert c.post("/admin/analyze", json=BODY).status_code == 401
+    assert c.post("/admin/analyze", json=BODY, headers={"x-admin-token": "mal"}).status_code == 401
+
+
 def test_analyze_returns_report_and_disclaimer(client):
     c, _ = client
-    r = c.post("/analyze", json=BODY)
+    r = c.post("/admin/analyze", json=BODY, headers={"x-admin-token": "secreto"})
     assert r.status_code == 200
     body = r.json()
     assert body["analysis"]["side"] == "over"
@@ -79,7 +87,8 @@ def test_did_not_play_is_void(client):
 
 def test_unknown_player_404(client):
     c, _ = client
-    assert c.post("/analyze", json={**BODY, "player": "Nadie"}).status_code == 404
+    h = {"x-admin-token": "secreto"}
+    assert c.post("/admin/analyze", json={**BODY, "player": "Nadie"}, headers=h).status_code == 404
 
 
 def test_player_fixture_sanity():

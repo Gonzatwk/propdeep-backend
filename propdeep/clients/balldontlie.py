@@ -18,6 +18,19 @@ RETRY_WAIT = 10.0
 # jugadores): se guardan un rato en memoria para no gastar el límite.
 CACHE_TTL = 3600.0
 
+# The Odds API escribe a algunos jugadores por su apodo y Balldontlie por su nombre. Sacados de la
+# caché del backtest 2025-26, donde estos jugadores se quedaban fuera (nombre ya normalizado).
+NAME_ALIASES = {
+    "ace bailey": "airious bailey",
+    "alex sarr": "alexandre sarr",
+    "bones hyland": "nah'shon hyland",
+    "herb jones": "herbert jones",
+    "moe wagner": "moritz wagner",
+    "ron holland": "ronald holland ii",
+    "vincent williams jr": "vince williams jr",
+}
+NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
+
 
 class BalldontlieClient:
     def __init__(self, api_key: str, http: httpx.Client | None = None, sleep=time.sleep):
@@ -62,14 +75,25 @@ class BalldontlieClient:
             params["cursor"] = cursor
 
     def find_player(self, name: str) -> dict | None:
-        """Busca un jugador por nombre completo; devuelve el mejor candidato."""
-        parts = name.strip().split()
-        params = {"search": parts[-1]} if parts else {"search": name}
+        """Busca un jugador por nombre completo; devuelve el mejor candidato.
+
+        Busca por el apellido sin sufijo ("Jaren Jackson Jr." busca "Jackson", no "Jr.") y acepta
+        el nombre con o sin sufijo, y los apodos de NAME_ALIASES."""
+        wanted = canonical_name(name)
+        base = _without_suffix(wanted) or wanted
+        # El apellido tal como viene (sin sufijo); con apodo, el del nombre real.
+        tokens = [t for t in name.strip().split() if _normalize(t) not in NAME_SUFFIXES]
+        if wanted != _normalize(name):
+            tokens = [t.title() for t in base.split()]
+        params = {"search": tokens[-1]} if tokens else {"search": name}
         candidates = self._get_all("/players", params, limit=100)
-        wanted = _normalize(name)
+        full = lambda p: _normalize(f"{p.get('first_name', '')} {p.get('last_name', '')}")  # noqa: E731
         for player in candidates:
-            if _normalize(f"{player['first_name']} {player['last_name']}") == wanted:
+            if full(player) == wanted:
                 return player
+        loose = [p for p in candidates if _without_suffix(full(p)) == base]
+        if len(loose) == 1:
+            return loose[0]
         return candidates[0] if len(candidates) == 1 else None
 
     def player_stats(self, player_id: int, seasons: list[int]) -> list[dict]:
@@ -110,6 +134,16 @@ def _normalize(text: str) -> str:
 
     ascii_text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     return " ".join(ascii_text.lower().replace(".", "").split())
+
+
+def canonical_name(name: str) -> str:
+    """Nombre normalizado, con el apodo cambiado por el nombre que usa Balldontlie."""
+    normalized = _normalize(name)
+    return NAME_ALIASES.get(normalized, normalized)
+
+
+def _without_suffix(normalized: str) -> str:
+    return " ".join(p for p in normalized.split() if p not in NAME_SUFFIXES)
 
 
 def _minutes(value: Any) -> float:

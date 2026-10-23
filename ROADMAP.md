@@ -9,8 +9,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 **Esfuerzo:** B = 1 día o menos · M = 2-4 días · A = 5 días o más.
 
 **Cómo se trabaja**
-- Una tarea = un commit (o un PR), con su test y `pytest` en verde.
-- Solo se hace commit cuando lo pide el autor.
+- Una tarea = un commit con su test y `pytest` en verde, en una rama por bloque. El autor fusiona el PR.
 - Lo que marca DECIDE EL AUTOR no se toca hasta que decida, y se le pregunta de una en una.
 - Nada de gastar créditos de The Odds API sin estimarlos antes y avisar.
 
@@ -20,24 +19,24 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | Siguiente | Estado |
 |---|---|
-| D2: fusionar el PR de la rama `docs/auditoria-plan-roadmap` | PENDIENTE (lo fusiona el autor) |
-| 0.1: cerrar `POST /analyze` | PENDIENTE (primera tarea de código) |
+| Fusionar el PR de `mvp/bloque-0` (bloque 0 completo) | PENDIENTE (lo fusiona el autor) |
+| Bloque 1: motor de probabilidad, en la rama `mvp/bloque-1` (sale de `mvp/bloque-0`) | EN CURSO |
 
 ## Fechas clave
 
 | Fecha | Qué | Estado |
 |---|---|---|
 | ~10-dic-2026 | Fin estimado del MVP (6-7 semanas desde el 24-oct) | PENDIENTE |
-| 2.ª quincena de diciembre | Recordar al autor la subida a 19 € | PENDIENTE |
+| 2.ª quincena de diciembre | Recordar al autor la subida a 19 € | YA NO HACE FALTA: el aviso se quitó el 24-oct (0.10) |
 | 31-dic-2026 | Criterio de corte del modelo. Ver D3: con el nuevo enfoque hay que redefinirlo | DECIDE EL AUTOR |
-| 1-ene-2027 | Subida del mensual a 19 €: cumplirla o quitar el aviso (tarea 0.10 lo quita) | PENDIENTE |
+| 1-ene-2027 | Subida del mensual a 19 €: aviso quitado de la web (0.10), no hay nada que cumplir | HECHO |
 
 ## Decisiones pendientes del autor
 
 | ID | Decisión | Recomendación | Estado |
 |---|---|---|---|
 | D1 | Restaurar CLAUDE.md. La copia de trabajo solo tiene cambios de formato de un editor de markdown, y las barras que mete estropean los comandos (`venv\\Scripts\\activate`, `VITE\_API\_URL`) | Volver a la versión de `main` (`git checkout -- CLAUDE.md`). El nuevo enfoque se escribirá en la tarea 0.12 | HECHO (23-oct) |
-| D2 | Commitear AUDIT.md, PLAN-PLATAFORMA.md y ROADMAP.md. Y qué hacer con `instrucciones-proyecto.md` (tiene datos personales) y `revision_2026-10-21.csv` | Los tres documentos van en la rama `docs/auditoria-plan-roadmap`; los otros dos, a `.gitignore` | EN CURSO (falta fusionar el PR) |
+| D2 | Commitear AUDIT.md, PLAN-PLATAFORMA.md y ROADMAP.md. Y qué hacer con `instrucciones-proyecto.md` (tiene datos personales) y `revision_2026-10-21.csv` | Los tres documentos van en la rama `docs/auditoria-plan-roadmap`; los otros dos, a `.gitignore` | HECHO (PR #22 fusionado) |
 | D3 | ¿Sigue valiendo el criterio de corte del 31-dic (300 jugadas con ROI ≥ 0) con el enfoque de plataforma? | Redefinirlo con log-loss frente al mercado y acierto frente a la probabilidad dicha (AUDIT §1, §3.9) | DECIDE EL AUTOR |
 | D4 | Proveedor de cuotas de casas españolas y latinoamericanas | El autor lo busca con los requisitos de PLAN-PLATAFORMA §4. Bloquea la fase 2.1 | BLOQUEADO |
 | D5 | Consulta legal y comprobar si Stripe admite el negocio | Antes de cobrar | PENDIENTE |
@@ -59,18 +58,18 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | ID | Tarea | Origen | Esfuerzo | Estado |
 |---|---|---|---|---|
-| 0.1 | Cerrar `POST /analyze` (solo admin) y cambiar su test | AUDIT S1 | B | PENDIENTE |
-| 0.2 | Quitar `/board/top` y la página Proyecciones (la sustituye el feed) | AUDIT S2 | B | PENDIENTE |
-| 0.3 | Guardar versión y parámetros del modelo en cada predicción (también en el hash). Marcar las del 21-oct como configuración antigua sin editarlas | AUDIT C2, M3 | B | PENDIENTE |
-| 0.4 | Liquidación robusta: no anular si el boxscore viene vacío, `try` por partido y anulación manual de las predicciones sin `game_id`. Con tests | AUDIT C3, C4 | M | PENDIENTE |
-| 0.5 | Corregir `--todas-casas` (todas las casas por línea), repetir el backtest `--sin-companeros` desde la caché y luego `analisis_peso` | AUDIT C1, M2 | B | PENDIENTE |
-| 0.6 | Jornada automática: volver a los partidos publicados a medias y no repetir sin fin los que no tienen líneas | AUDIT C5 | M | PENDIENTE |
-| 0.7 | Alias de nombres (Herb Jones, Bones Hyland, Moe Wagner…) | AUDIT C6 | B | PENDIENTE |
-| 0.8 | Errores registrados y `KeyError` de datos externos controlados en `scan_day` y en la liquidación | AUDIT C7 | B | PENDIENTE |
-| 0.9 | Umbrales "X+" y líneas enteras bien tratados en `prob_over` | AUDIT M10 | B | PENDIENTE |
-| 0.10 | Textos de la web: fuera "20 de octubre", las promesas no cubiertas y el aviso de subida | AUDIT S5, S6 | B | PENDIENTE |
-| 0.11 | Avisos: +18, juego responsable (jugarbien.es, RGIAJ) y "no es consejo de apuestas" | PLAN §5 | B | PENDIENTE |
-| 0.12 | CLAUDE.md con el nuevo enfoque: feed con nota, sin "EDGE", coordinación y ROADMAP | PLAN §0 | B | PENDIENTE |
+| 0.1 | Cerrar `POST /analyze` (solo admin) y cambiar su test | AUDIT S1 | B | HECHO (aa3c6a6) |
+| 0.2 | Quitar `/board/top` y la página Proyecciones (la sustituye el feed) | AUDIT S2 | B | HECHO (43e4628) |
+| 0.3 | Guardar versión y parámetros del modelo en cada predicción (también en el hash). Marcar las del 21-oct como configuración antigua sin editarlas | AUDIT C2, M3 | B | HECHO (ea81bf9) |
+| 0.4 | Liquidación robusta: no anular si el boxscore viene vacío, `try` por partido y anulación manual de las predicciones sin `game_id`. Con tests | AUDIT C3, C4 | M | HECHO (1d2e43d) |
+| 0.5 | Corregir `--todas-casas` (todas las casas por línea), repetir el backtest `--sin-companeros` desde la caché y luego `analisis_peso` | AUDIT C1, M2 | B | HECHO (6a0388c) |
+| 0.6 | Jornada automática: volver a los partidos publicados a medias y no repetir sin fin los que no tienen líneas | AUDIT C5 | M | HECHO |
+| 0.7 | Alias de nombres (Herb Jones, Bones Hyland, Moe Wagner…) | AUDIT C6 | B | HECHO |
+| 0.8 | Errores registrados y `KeyError` de datos externos controlados en `scan_day` y en la liquidación | AUDIT C7 | B | HECHO |
+| 0.9 | Umbrales "X+" y líneas enteras bien tratados en `prob_over` | AUDIT M10 | B | HECHO |
+| 0.10 | Textos de la web: fuera "20 de octubre", las promesas no cubiertas y el aviso de subida | AUDIT S5, S6 | B | HECHO |
+| 0.11 | Avisos: +18, juego responsable (jugarbien.es, RGIAJ) y "no es consejo de apuestas" | PLAN §5 | B | HECHO |
+| 0.12 | CLAUDE.md con el nuevo enfoque: feed con nota, sin "EDGE", coordinación y ROADMAP | PLAN §0 | B | HECHO |
 
 ### Bloque 1: Motor de probabilidad (4-5 días)
 
@@ -138,3 +137,16 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 |---|---|
 | 23-oct-2026 | ROADMAP creado a partir de AUDIT.md y PLAN-PLATAFORMA.md |
 | 23-oct-2026 | D1 hecho: CLAUDE.md devuelto a la versión de `main`. D2: rama `docs/auditoria-plan-roadmap` con los tres documentos y `.gitignore` |
+| 24-oct-2026 | PR #22 fusionado. Bloque 0 empezado en `mvp/bloque-0` |
+| 24-oct-2026 | 0.1: `/analyze` pasa a `/admin/analyze` |
+| 24-oct-2026 | 0.2: fuera `/board/top` y la página Proyecciones (redirige a `/partidos`) |
+| 24-oct-2026 | 0.3: `model_version` en cada predicción y dentro del hash; `db.verify()` (las 513 actuales verifican); resumen por versión |
+| 24-oct-2026 | 0.4: liquidación sin anulaciones falsas (boxscore vacío), aplazados y predicciones sin partido se anulan, un partido que falla no frena al resto |
+| 24-oct-2026 | 0.5: backtest con todas las casas y `--solo-cache`. Repetido sin compañeros (0 créditos): 584 jugadas, ROI +1,8 % (IC −5,7 % a +9,6 %). Con hasta 8 casas por línea, `analisis_peso` da un peso del modelo de 0,06-0,08 y ninguna regla con el IC por encima de 0. El peso no se toca ahora: lo sustituye la calibración del bloque 1 |
+| 24-oct-2026 | 0.6: la jornada automática apunta cada petición de cuotas (`event_scans`). Un partido sin líneas o con mercados sin colgar se repasa a 3 h y a 1 h del inicio (máximo 3 peticiones, no una cada 20 min); un partido que falla no frena a los demás |
+| 24-oct-2026 | 0.7: alias de 7 apodos sacados de la caché (Ace Bailey, Herb Jones, Bones Hyland…); `find_player` busca por el apellido sin sufijo ("Jaren Jackson Jr." ya no busca "Jr."); el backtest usa los mismos alias |
+| 24-oct-2026 | 0.8: cuotas rotas de The Odds API se saltan sin tumbar el partido; un fallo inesperado en una prop no corta la jornada; los errores que antes se tragaban ahora quedan en el log |
+| 24-oct-2026 | 0.9: líneas enteras sin contar el empuje como "menos" (`prob_push`) y `prob_at_least` para los hitos "X+". Las líneas ,5 dan exactamente lo mismo que antes (test fijado) |
+| 24-oct-2026 | 0.10: fuera los "20 de octubre" (la web dice que está en pruebas privadas), las promesas que el modelo no cumple (ritmo, posición, viajes, paliza) y el aviso de subida a 19 €. Al hacer el feed (2.3) habrá que cambiar la pregunta "¿Me vais a decir a qué apostar?" |
+| 24-oct-2026 | 0.11: el pie de página tiene el título visible "Juego responsable" y el aviso de autoexclusión en el RGIAJ de la DGOJ, además de +18, "no son recomendaciones" y jugarbien.es |
+| 24-oct-2026 | 0.12: CLAUDE.md al día (rumbo, documentos, endpoints, versión del modelo, liquidación, jornada automática, reglas de coordinación). Bloque 0 terminado |

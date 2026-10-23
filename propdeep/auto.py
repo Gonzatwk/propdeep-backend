@@ -4,7 +4,8 @@ Mientras el servidor está encendido, cada `AUTO_EVERY_MINUTES`:
 1. Liquida las predicciones y los picks cuyo partido ya ha terminado.
 2. Mira los partidos de la jornada en The Odds API (la lista de partidos no gasta créditos) y
    analiza los que empiezan en menos de `AUTO_HOURS_BEFORE` horas y aún no están publicados.
-   Cada partido se analiza una sola vez (mercados x regiones créditos).
+   Cada análisis cuesta mercados x regiones créditos. Si un partido sale sin líneas o con algún
+   mercado sin colgar, se vuelve a mirar como mucho dos veces más, a 3 h y a 1 h del inicio.
 3. Refresca las cuotas a ganador de la jornada como mucho cada hora (1 crédito por región).
 """
 from __future__ import annotations
@@ -17,6 +18,7 @@ from typing import Callable
 from sqlalchemy.orm import Session
 
 from . import board, moneyline
+from .clients.odds import MARKETS
 from .db import pending
 from .picks import pending_ml_unlinked, pending_with_game
 from .track_record import settle
@@ -36,14 +38,30 @@ def _start(event: dict) -> datetime | None:
     return board._parse_time(event.get("commence_time"))
 
 
-def due_events(events: list[dict], published: set[str], now: datetime, hours_before: float) -> list[dict]:
-    """Partidos sin publicar que empiezan pronto y aún no han empezado."""
+# Repasos de un partido incompleto: horas antes del inicio y separación mínima entre peticiones.
+RESCAN_HOURS = (3.0, 1.0)
+RESCAN_GAP = timedelta(minutes=60)
+ALL_STATS = frozenset(MARKETS.values())
+
+
+def due_events(events: list[dict], published: dict[str, set[str]], scans: dict[str, tuple[int, datetime]],
+               now: datetime, hours_before: float) -> list[dict]:
+    """Partidos por empezar que toca analizar: los que nunca se miraron, cuando faltan menos de
+    `hours_before` horas, y los incompletos (sin líneas o sin algún mercado), en los repasos."""
     out = []
     for e in events:
         start = _start(e)
-        if e.get("id") in published or start is None:
+        if start is None or not now < start <= now + timedelta(hours=hours_before):
             continue
-        if now < start <= now + timedelta(hours=hours_before):
+        stats = published.get(e.get("id"), set())
+        # Publicado antes de llevar la cuenta (o a mano con /admin/board): cuenta como una vez.
+        n, last = scans.get(e.get("id"), (1 if stats else 0, None))
+        if n == 0:
+            out.append(e)
+            continue
+        if ALL_STATS <= stats or n > len(RESCAN_HOURS):
+            continue
+        if start - now <= timedelta(hours=RESCAN_HOURS[n - 1]) and (last is None or now - last >= RESCAN_GAP):
             out.append(e)
     return out
 
@@ -53,7 +71,11 @@ def tick(session: Session, analyzer, odds, bdl, settings, report: Callable, now:
     now = now or datetime.now(timezone.utc)
     done = {"settled": 0, "published": 0, "events": []}
     if pending(session) or pending_with_game(session) or pending_ml_unlinked(session):
-        done["settled"] = len(settle(session, bdl))
+        try:
+            done["settled"] = len(settle(session, bdl, now))
+        except Exception:  # noqa: BLE001 - sin liquidar se sigue publicando
+            session.rollback()
+            log.exception("No se pudo liquidar; se reintenta en la próxima vuelta")
 
     day = jornada(now)
     try:
@@ -61,8 +83,8 @@ def tick(session: Session, analyzer, odds, bdl, settings, report: Callable, now:
     except Exception:  # noqa: BLE001 - sin cuotas a ganador se sigue publicando
         session.rollback()
         log.exception("No se pudieron traer las cuotas a ganador")
-    due = due_events(odds.events_on(day), board.published_events(session, day.isoformat()), now,
-                     settings.auto_hours_before)
+    due = due_events(odds.events_on(day), board.published_stats(session, day.isoformat()),
+                     board.scans(session, day.isoformat()), now, settings.auto_hours_before)
     if due:
         from .pipeline import scan_day
 
@@ -70,8 +92,15 @@ def tick(session: Session, analyzer, odds, bdl, settings, report: Callable, now:
     # Partido a partido, por hora de inicio: el primero sale en la web sin esperar al resto.
     for event in sorted(due, key=lambda e: e.get("commence_time") or ""):
         name = f"{event.get('away_team')} @ {event.get('home_team')}"
-        results = scan_day(analyzer, odds, day, events=[event], log=log.info)
-        published = board.publish_board(session, results, day, settings.free_lines_per_day, report)
+        published = []
+        try:
+            results = scan_day(analyzer, odds, day, events=[event], log=log.info)
+            published = board.publish_board(session, results, day, settings.free_lines_per_day, report)
+        except Exception:  # noqa: BLE001 - un partido que falla no frena al resto
+            session.rollback()
+            log.exception("Jornada automática: falló %s", name)
+        # Se apunta aunque falle: cada petición cuesta créditos y no debe repetirse sin fin.
+        board.record_scan(session, event.get("id"), day.isoformat(), now, len(published))
         done["published"] += len(published)
         done["events"].append(name)
         log.warning("Jornada automática: %s, %s líneas publicadas", name, len(published))

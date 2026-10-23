@@ -12,6 +12,10 @@ from statistics import mean, pstdev
 
 STAT_LABELS = {"pts": "puntos", "reb": "rebotes", "ast": "asistencias", "fg3m": "triples"}
 
+# Versión de la lógica del modelo. Se sube a mano cada vez que cambia un cálculo, para que el
+# historial no mezcle predicciones de modelos distintos al medir el rendimiento.
+MODEL_VERSION = "2026.10.24"
+
 # Desviación mínima por estadística: evita probabilidades extremas con muestras cortas.
 MIN_SD = {"pts": 4.0, "reb": 2.0, "ast": 1.8, "fg3m": 1.0}
 
@@ -100,6 +104,11 @@ class Analysis:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+def model_version(model_weight: float, min_edge: float, teammate_adjust: bool) -> str:
+    """Versión y parámetros con los que se hizo una predicción (se guarda con ella)."""
+    return f"{MODEL_VERSION} peso={model_weight:g} ventaja={min_edge:g} companeros={int(bool(teammate_adjust))}"
 
 
 def _avg(xs: list[float]) -> float | None:
@@ -207,18 +216,35 @@ def prob_over(stat: str, projection: float, sd: float, line: float) -> float:
     Puntos, rebotes y asistencias tienen cola a la derecha: la mediana queda por debajo de la
     media. Con una normal simétrica el modelo daba unos 5 puntos de más al over (backtest 2025-26).
     """
-    mu = max(projection, 0.05)
-    var = max(sd, MIN_SD.get(stat, 2.0)) ** 2
     k = math.floor(line)
     if k < 0:
         return 1.0
+    return max(0.0, min(1.0, 1 - _cdf(stat, projection, sd, k)))
+
+
+def prob_push(stat: str, projection: float, sd: float, line: float) -> float:
+    """P(estadística = línea): solo hay empuje (se devuelve lo apostado) con líneas enteras."""
+    if line != math.floor(line) or line < 0:
+        return 0.0
+    k = int(line)
+    return max(0.0, _cdf(stat, projection, sd, k) - (_cdf(stat, projection, sd, k - 1) if k > 0 else 0.0))
+
+
+def prob_at_least(stat: str, projection: float, sd: float, threshold: int) -> float:
+    """P(estadística ≥ umbral), para los hitos "X+" de las casas: "25+" es lo mismo que "más de 24,5"."""
+    return prob_over(stat, projection, sd, threshold - 0.5)
+
+
+def _cdf(stat: str, projection: float, sd: float, k: int) -> float:
+    """P(X ≤ k) de la binomial negativa del modelo (Poisson si no hay sobredispersión)."""
+    mu = max(projection, 0.05)
+    var = max(sd, MIN_SD.get(stat, 2.0)) ** 2
     if var <= mu * 1.0001:
-        return max(0.0, min(1.0, 1 - _poisson_cdf(k, mu)))
+        return _poisson_cdf(k, mu)
     r = mu * mu / (var - mu)
     p = r / (r + mu)
-    cdf = sum(math.exp(math.lgamma(i + r) - math.lgamma(r) - math.lgamma(i + 1)
-                       + r * math.log(p) + i * math.log(1 - p)) for i in range(k + 1))
-    return max(0.0, min(1.0, 1 - cdf))
+    return sum(math.exp(math.lgamma(i + r) - math.lgamma(r) - math.lgamma(i + 1)
+                        + r * math.log(p) + i * math.log(1 - p)) for i in range(k + 1))
 
 
 def devig(over_odds: float, under_odds: float) -> float:
@@ -240,6 +266,11 @@ def analyze(
 ) -> Analysis:
     projection = project(stat, trends, context)
     p_model = prob_over(stat, projection, trends.sd, line)
+    push = prob_push(stat, projection, trends.sd, line)
+    if 0 < push < 1:
+        # Línea entera: con empuje se devuelve lo apostado. El mercado sin margen ya da la
+        # probabilidad del más SIN contar el empuje; el modelo se pone en esos mismos términos.
+        p_model = p_model / (1 - push)
     p_market = devig(over_odds, under_odds)
     p_final = model_weight * p_model + (1 - model_weight) * p_market
 

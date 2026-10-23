@@ -185,7 +185,7 @@ export default function MisPicks() {
         ) : error === 'sin-servidor' || (!error && picks.length === 0 && parlays.length === 0) ? (
           <div className="border border-dashed border-white/40 px-6 py-14 text-center">
             <p className="display text-[2.4rem] leading-none text-gold sm:text-[3rem]">El primer pick llega con la temporada</p>
-            <p className="mx-auto mt-4 max-w-md text-muted">La temporada regular empieza el 20 de octubre. Cada pick saldrá aquí antes de su partido.</p>
+            <p className="mx-auto mt-4 max-w-md text-muted">Cada pick saldrá aquí antes de su partido.</p>
           </div>
         ) : error ? (
           <Fallo reintentar={reintentar} />

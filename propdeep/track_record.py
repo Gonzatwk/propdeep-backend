@@ -1,13 +1,27 @@
 """Liquidación de predicciones y rendimiento real del historial."""
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
 from .clients.balldontlie import BalldontlieClient, minutes
 from .db import Prediction, pending
+
+log = logging.getLogger("propdeep.track_record")
+
+# Partido sin terminar tantos días después de su fecha (aplazado o perdido): se anula, como hacen
+# las casas, que no esperan a que se juegue otro día.
+STALE_DAYS = 3
+# Predicción que nunca se emparejó con un partido (p. ej. traspasos del 21-oct): se anula pasado
+# este tiempo, porque no hay forma de liquidarla.
+UNLINKED_DAYS = 2
+
+
+# Predicciones sin versión: las del 21-oct-2026, con peso 0,5 y sin el bloqueo de 3 partidos.
+OLD_VERSION = "sin versión (antes del 24-oct-2026)"
 
 
 def grade(side: str, line: float, actual: float) -> str:
@@ -17,43 +31,88 @@ def grade(side: str, line: float, actual: float) -> str:
     return "won" if went_over == (side == "over") else "lost"
 
 
-def settle(session: Session, bdl: BalldontlieClient) -> list:
-    """Liquida las predicciones y los picks pendientes cuyo partido ya tiene estadísticas finales."""
-    from .picks import ML, pending_ml_unlinked, pending_with_game, refresh_parlays
+def settle(session: Session, bdl: BalldontlieClient, now: datetime | None = None) -> list:
+    """Liquida las predicciones y los picks pendientes cuyo partido ya tiene estadísticas finales.
 
-    _link_moneylines(session, bdl, pending_ml_unlinked(session))
-    settled = []
+    Un partido que falla (API caída, datos raros) no frena a los demás: se reintenta en la
+    siguiente liquidación."""
+    from .picks import pending_ml_unlinked, pending_with_game, refresh_parlays
+
+    now = now or _now()
+    try:
+        _link_moneylines(session, bdl, pending_ml_unlinked(session))
+    except Exception:  # noqa: BLE001 - se reintenta en la próxima liquidación
+        session.rollback()
+        log.exception("No se pudieron emparejar las apuestas a ganador")
+    pend = pending(session)
+    settled = _void_unlinked(pend, now)
     by_game: dict[int, list] = defaultdict(list)
-    for p in [*pending(session), *pending_with_game(session)]:
-        if p.game_id:
+    for p in [*pend, *pending_with_game(session)]:
+        if p.game_id and p.status == "pending":
             by_game[p.game_id].append(p)
     for game_id, preds in by_game.items():
-        game = bdl.game(game_id)
-        if str(game.get("status", "")).lower() != "final":
+        try:
+            results = _grade_game(bdl, game_id, preds, now)
+        except Exception:  # noqa: BLE001 - un partido no debe frenar la liquidación del resto
+            log.exception("No se pudo liquidar el partido %s; se reintenta en la próxima vuelta", game_id)
             continue
-        props = [p for p in preds if getattr(p, "stat", None) != ML]
-        for p in preds:
-            if getattr(p, "stat", None) == ML:
-                p.actual = _margin(p, game)
-                p.status = "void" if p.actual is None else grade("over", 0, p.actual)
-                p.settled_at = datetime.now(timezone.utc)
-                settled.append(p)
-        if not props:
-            continue
-        rows = bdl.game_stats(game_id)
-        by_player = {r["player"]["id"]: r for r in rows}
-        for p in props:
-            row = by_player.get(p.player_id)
-            if row is None or minutes(row.get("min")) == 0:
-                # No jugó: la apuesta se anula en las casas, aquí también.
-                p.status, p.actual = "void", None
-            else:
-                p.actual = float(row.get(p.stat) or 0)
-                p.status = grade(p.side, p.line, p.actual)
-            p.settled_at = datetime.now(timezone.utc)
+        for p, status, actual in results:
+            p.status, p.actual, p.settled_at = status, actual, now
             settled.append(p)
     session.commit()
     return settled + refresh_parlays(session)
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _void_unlinked(preds: list[Prediction], now: datetime) -> list[Prediction]:
+    """Anula las predicciones que nunca tuvieron partido de Balldontlie y ya pasó su jornada."""
+    limit = (now - timedelta(days=UNLINKED_DAYS)).date().isoformat()
+    out = []
+    for p in preds:
+        if p.game_id is None and p.game_date < limit:
+            p.status, p.actual, p.settled_at = "void", None, now
+            out.append(p)
+    return out
+
+
+def _grade_game(bdl: BalldontlieClient, game_id: int, preds: list, now: datetime) -> list[tuple]:
+    """(predicción, estado, resultado) de las que se pueden liquidar ya. No toca nada: si algo
+    falla a medias, el partido queda entero para la próxima vuelta."""
+    from .picks import ML
+
+    game = bdl.game(game_id)
+    status = str(game.get("status", "")).lower()
+    if status != "final":
+        stale = (now - timedelta(days=STALE_DAYS)).date().isoformat()
+        if "postponed" in status or "cancel" in status or all((p.game_date or "9999") < stale for p in preds):
+            # Aplazado o sin jugar: las casas anulan la apuesta.
+            return [(p, "void", None) for p in preds]
+        return []
+    out = []
+    for p in preds:
+        if getattr(p, "stat", None) == ML:
+            margin = _margin(p, game)
+            out.append((p, "void" if margin is None else grade("over", 0, margin), margin))
+    props = [p for p in preds if getattr(p, "stat", None) != ML]
+    if not props:
+        return out
+    rows = bdl.game_stats(game_id)
+    if not rows:
+        # "Final" pero sin boxscore todavía: se espera. Anularlo sería perder el resultado.
+        return out
+    by_player = {(r.get("player") or {}).get("id"): r for r in rows}
+    for p in props:
+        row = by_player.get(p.player_id)
+        if row is None or minutes(row.get("min")) == 0:
+            # No jugó: la apuesta se anula en las casas, aquí también.
+            out.append((p, "void", None))
+        else:
+            actual = float(row.get(p.stat) or 0)
+            out.append((p, grade(p.side, p.line, actual), actual))
+    return out
 
 
 def _nickname(team: str | None) -> str:
@@ -82,6 +141,7 @@ def _link_moneylines(session: Session, bdl, picks: list) -> None:
         try:
             games = bdl.games_on(datetime.fromisoformat(day).date())
         except Exception:  # noqa: BLE001 - se reintenta en la próxima liquidación
+            log.exception("No se pudieron traer los partidos del %s para las apuestas a ganador", day)
             continue
         for p in ps:
             home = _nickname(p.home_team)
@@ -112,11 +172,14 @@ def summary(predictions: list[Prediction]) -> dict:
         }
 
     picks = [p for p in predictions if p.side]
-    by_conf = defaultdict(list)
+    by_conf, by_version = defaultdict(list), defaultdict(list)
     for p in picks:
         by_conf[p.confidence].append(p)
+        by_version[p.model_version or OLD_VERSION].append(p)
     return {
         "overall": block(picks),
         "by_confidence": {k: block(v) for k, v in sorted(by_conf.items())},
+        # Para medir el modelo, cada versión por separado: mezclarlas no dice nada.
+        "by_version": {k: block(v) for k, v in sorted(by_version.items())},
         "no_bet_analyses": sum(1 for p in predictions if not p.side),
     }

@@ -12,11 +12,23 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import DateTime, Integer, String, select
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
-from .db import Prediction, publish
+from .db import Base, Prediction, publish
 from .model import Analysis
+
+
+class EventScan(Base):
+    """Cada vez que se piden las cuotas de un partido (cuesta créditos). Sirve para no volver a
+    pedir sin fin un partido sin líneas y para repasar los que salieron a medias."""
+    __tablename__ = "event_scans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[str] = mapped_column(String(64), index=True)
+    game_date: Mapped[str] = mapped_column(String(10), index=True)
+    scanned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    lines: Mapped[int] = mapped_column(Integer, default=0)
 
 
 def _now() -> datetime:
@@ -174,30 +186,6 @@ def line_detail(p: Prediction) -> dict:
     }
 
 
-def top_lines(lines: list[Prediction], subscriber: bool, limit: int = 40, now: datetime | None = None) -> list[dict]:
-    """Líneas de partidos por empezar con más distancia entre la proyección y la línea,
-    medida en desviaciones típicas del jugador (así puntos y triples se comparan bien).
-    Es un dato, no una recomendación: el backtest no mostró ventaja con la proyección sola.
-    Fuera los jugadores lesionados o con poca muestra, y las líneas bloqueadas."""
-    out = []
-    for p in lines:
-        a = p.analysis or {}
-        proj = a.get("projection")
-        if proj is None or a.get("reasons") or started(p, now) or not is_unlocked(p, subscriber, now):
-            continue
-        sd = max((a.get("trends") or {}).get("sd") or 0.0, 1.0)
-        diff = proj - p.line
-        out.append({
-            **line_summary(p, True),
-            "game": game_header(p),
-            "diff": round(diff, 2),
-            "diff_pct": round(diff / p.line, 4) if p.line else None,
-            "score": round(abs(diff) / sd, 3),
-            "direction": "over" if diff > 0 else "under",
-        })
-    return sorted(out, key=lambda x: -x["score"])[:limit]
-
-
 def game_header(p: Prediction) -> dict:
     start = _aware(p.commence_time)
     return {
@@ -221,6 +209,31 @@ def board_lines(session: Session, game_date: str | None = None, event_id: str | 
 def published_events(session: Session, game_date: str) -> set[str]:
     stmt = select(Prediction.event_id).where(Prediction.game_date == game_date, Prediction.event_id.is_not(None))
     return set(session.scalars(stmt.distinct()))
+
+
+def published_stats(session: Session, game_date: str) -> dict[str, set[str]]:
+    """Estadísticas con alguna línea publicada, por partido."""
+    stmt = select(Prediction.event_id, Prediction.stat).where(
+        Prediction.game_date == game_date, Prediction.event_id.is_not(None)).distinct()
+    out: dict[str, set[str]] = defaultdict(set)
+    for event_id, stat in session.execute(stmt):
+        out[event_id].add(stat)
+    return dict(out)
+
+
+def record_scan(session: Session, event_id: str, game_date: str, when: datetime, lines: int) -> None:
+    session.add(EventScan(event_id=event_id, game_date=game_date, scanned_at=when, lines=lines))
+    session.commit()
+
+
+def scans(session: Session, game_date: str) -> dict[str, tuple[int, datetime]]:
+    """Por partido: cuántas veces se han pedido sus cuotas y cuándo fue la última."""
+    out: dict[str, tuple[int, datetime]] = {}
+    for s in session.scalars(select(EventScan).where(EventScan.game_date == game_date)):
+        n, last = out.get(s.event_id, (0, None))
+        when = _aware(s.scanned_at)
+        out[s.event_id] = (n + 1, when if last is None or when > last else last)
+    return out
 
 
 def board_dates(session: Session) -> list[str]:

@@ -19,7 +19,7 @@ const SUGERENCIAS = [
   '¿Qué jugadores juegan back-to-back hoy?',
 ]
 
-const RESPUESTA_DEMO = 'En la demostración el chat no responde preguntas nuevas. Desde el 20 de octubre, con la suscripción, te contesto con los datos reales de cada jornada.'
+const RESPUESTA_DEMO = 'En la demostración el chat no responde preguntas nuevas. Cuando abra, con la suscripción, te contesto con los datos reales de cada jornada.'
 
 function avisoDeError(e) {
   if (e?.name === 'TimeoutError') return 'La respuesta está tardando demasiado. Vuelve a intentarlo.'
@@ -198,7 +198,7 @@ function Contenido() {
   if (!API_URL) {
     return (
       <div className="mt-10 border border-dashed border-white/40 px-6 py-12 text-center">
-        <p className="display text-[2.4rem] leading-none text-gold sm:text-[3rem]">El chat abre el 20 de octubre</p>
+        <p className="display text-[2.4rem] leading-none text-gold sm:text-[3rem]">El chat llega cuando abra PropDeep</p>
         <p className="mx-auto mt-4 max-w-md text-muted">Con la primera jornada de la temporada regular y la suscripción.</p>
         <Link to="/chat?demo=1" className="btn btn-ghost mt-8 h-12 px-6 text-lg">
           Ver una demostración <ArrowRight aria-hidden className="size-4" />

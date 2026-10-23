@@ -5,6 +5,7 @@
 - Cada análisis da tendencias, matchup, factores situacionales, comparación con la línea del mercado y nivel de confianza.
 - Es una herramienta de información orientativa (estilo Rotobot), NUNCA de "picks seguros".
 - Ahora mismo (oct-2026) lo usa solo el autor, en local, para validarlo antes de venderlo.
+- Rumbo decidido el 23-oct-2026: plataforma al estilo de RotoBot (feed de mejores jugadas, creador de combinadas, corrector de boletos, tabla de props y fichas). Qué se construye: `PLAN-PLATAFORMA.md`. Por qué: `AUDIT.md`. Tareas y estado: `ROADMAP.md`.
 
 ## 2. Stack y arquitectura
 - Backend: Python + FastAPI (repo `Gonzatwk/propdeep-backend`). App en `main.py` (`app`). Base de datos con SQLAlchemy: SQLite en local (`propdeep.db`), Postgres si se despliega.
@@ -23,6 +24,9 @@ requirements-dev.txt    + pytest, pandas, statsmodels (tests y scripts de análi
 .env.example            plantilla de variables de entorno (copiar a .env)
 BACKEND.md              guía del backend: despliegue, Stripe, uso en local
 PRODUCT.md              dirección de producto y diseño
+AUDIT.md                auditoría del 23-oct-2026: modelo, ROI, código, seguridad y producto
+PLAN-PLATAFORMA.md      plan de la plataforma (MVP y fase 2) y decisiones del autor
+ROADMAP.md              tareas y su estado; se actualiza en cada tarea
 propdeep/
   config.py             Settings leídos del entorno (get_settings())
   clients/balldontlie.py  cliente Balldontlie (reintento ante 429 y caché)
@@ -44,7 +48,7 @@ scripts/                utilidades por línea de comandos (ver sección 3)
 tests/                  pytest; tests/fakes.py simula las APIs (los tests no llaman a nada real)
 web/
   src/pages/            Home, MisPicks, PaperBets, Tipsters, legales y zona/ (Partidos, Partido,
-                        Informe, Proyecciones, Chat, Cuenta, Entrar, DatoDelDia)
+                        Informe, Chat, Cuenta, Entrar, DatoDelDia)
   src/components/       piezas de la interfaz
   src/lib/              lógica de cliente (sesión, tablero, combinada, paper...)
   src/data/             datos de demo e informes de ejemplo
@@ -77,8 +81,8 @@ Tests (con el venv activado): `pytest`. Todos deben pasar antes de cada commit.
 Scripts (con el venv activado, desde la raíz):
 - `python -m scripts.picks_hoy AAAA-MM-DD [--regions eu] [--casas bet365,williamhill] [--peso 0.2] [--max-events N] [--out archivo.csv]`: jornada en CSV con la mejor cuota. No usarlo con `AUTO_JORNADA=1`: paga las cuotas dos veces.
 - `python -m scripts.revision_jornada AAAA-MM-DD [--out archivo.csv]`: proyección frente a resultado de una jornada jugada.
-- `python -m scripts.backtest [--temporada 2025] [--lineas proxy|odds-api] [--desde AAAA-MM-DD] [--hasta AAAA-MM-DD] [--stats pts,reb,ast,fg3m] [--regiones us] [--minutos-antes 60] [--max-creditos N] [--estimar] [--todas-casas] [--sin-companeros] [--cache backtest_cache] [--salida backtest_out]`. Usar siempre `--estimar` o `--max-creditos` antes de gastar créditos de The Odds API.
-- `python -m scripts.analisis_peso backtest_out\odds-api-casas\lineas.csv`: compara pesos del modelo.
+- `python -m scripts.backtest [--temporada 2025] [--lineas proxy|odds-api] [--desde AAAA-MM-DD] [--hasta AAAA-MM-DD] [--stats pts,reb,ast,fg3m] [--regiones us] [--minutos-antes 60] [--max-creditos N] [--estimar] [--solo-cache] [--todas-casas] [--sin-companeros] [--cache backtest_cache] [--salida backtest_out]`. Usar siempre `--estimar` o `--max-creditos` antes de gastar créditos de The Odds API; `--solo-cache` no gasta ninguno. Hoy la caché solo tiene puntos de 2025-26 (región `us`, 60 min antes). Último backtest limpio: `backtest_out\2026-10-24\` (con `--sin-companeros`).
+- `python -m scripts.analisis_peso backtest_out\2026-10-24\odds-api-casas\lineas.csv`: compara pesos del modelo.
 - `python -m scripts.analisis_companeros backtest_out\odds-api-casas\lineas.csv [--peso 0.2] [--ventaja 0.03]`.
 - `python -m scripts.informes_ejemplo AAAA-MM-DD [--max-events 3] [--out web/src/data/informes_ejemplo.json] [--regions eu]`.
 
@@ -88,20 +92,22 @@ Scripts (con el venv activado, desde la raíz):
 3. `pipeline.Analyzer.analyze_prop` reúne historial, minutos, rival, pista, traspasos y lesiones, y llama a `model.analyze`.
 4. Probabilidad (todo en `propdeep/model.py`):
    - `project()`: proyección con ajuste de minutos y contexto (topes `MAX_MINUTES_ADJ`, `MAX_CONTEXT_ADJ`).
-   - `prob_over()`: P(más) con binomial negativa (Poisson si no hay sobredispersión).
+   - `prob_over()`: P(más) con binomial negativa (Poisson si no hay sobredispersión). `prob_push()` (líneas enteras: el empuje no cuenta como menos) y `prob_at_least()` (hitos "X+").
    - `devig()`: probabilidad del mercado sin margen.
    - `analyze()`: `p_final = MODEL_WEIGHT * p_modelo + (1 - MODEL_WEIGHT) * p_mercado`. Hoy `MODEL_WEIGHT=0.2` (20 % modelo, 80 % mercado), no 50/50.
 5. Ventaja = `p_final` frente a la probabilidad CON margen (`1/cuota`). Si no llega a `MIN_EDGE` (0,03 = 3 pp) o hay bloqueo, queda "sin ventaja".
 6. Bloqueos (`_blocking_reason`): jugador Out/Doubtful, menos de 5 partidos, menos de 3 partidos de la temporada actual, o traspasado con menos de 5 partidos en su equipo nuevo.
 7. Ajuste "compañero fuera": existe, pero apagado (`TEAMMATE_ADJUST=0`); solo es informativo.
 8. Claude redacta el informe usando solo los números calculados (`narrative.py`).
-9. Las predicciones se guardan con hash SHA-256 en un historial inmutable (`db.py`), también las "sin ventaja".
-10. Con `AUTO_JORNADA=1` (`auto.py`), cada `AUTO_EVERY_MINUTES` (20) se liquida lo terminado y se analiza una vez cada partido que empieza en menos de `AUTO_HOURS_BEFORE` (10) horas.
+9. Las predicciones se guardan con hash SHA-256 en un historial inmutable (`db.py`), también las "sin ventaja". Cada una lleva `model_version` (versión y parámetros, dentro del hash); `db.verify()` comprueba el hash. Las del 21-oct-2026 no tienen versión (peso 0,5, sin bloqueo de 3 partidos) y el resumen las separa.
+10. Con `AUTO_JORNADA=1` (`auto.py`), cada `AUTO_EVERY_MINUTES` (20) se liquida lo terminado y se analiza cada partido que empieza en menos de `AUTO_HOURS_BEFORE` (10) horas. Si sale sin líneas o con mercados sin colgar, se repasa a 3 h y a 1 h del inicio (tabla `event_scans`; como mucho 3 peticiones por partido).
+11. Liquidación (`track_record.settle`): un partido "Final" sin boxscore espera; aplazado o sin jugar 3 días después, se anula; una predicción sin partido se anula pasados 2 días; un partido que falla no frena al resto.
 
 ### Qué manda hoy: umbral de 3 pp frente a modo análisis
 - El umbral `MIN_EDGE` decide el veredicto INTERNO (más/menos o "sin ventaja"). Ese veredicto se guarda en el historial para seguir midiendo el modelo y sale en `picks_hoy` para el autor.
-- La zona de partidos (`board.py`) está en modo análisis: enseña proyección, % sobre la línea, desgloses y cuotas de cada casa, pero NUNCA un más/menos como recomendación. El veredicto no sale de la API pública.
+- La zona de partidos (`board.py`) está en modo análisis: enseña proyección, % sobre la línea, desgloses y cuotas de cada casa, pero NUNCA un más/menos como recomendación. El veredicto no sale de la API pública (`/board/top` se quitó el 24-oct-2026 porque lo dejaba entrever).
 - No mezclar los dos: no exponer el veredicto al usuario sin decisión expresa del autor.
+- Decisión del 23-oct-2026 (aún sin construir, ROADMAP bloque 2): el feed y el creador de combinadas enseñarán un lado con una NOTA de 0 a 100 y una PROBABILIDAD calibrada (anclada al precio justo del mercado). Nunca las palabras "EDGE" ni "ventaja", nunca un lado que la probabilidad calibrada vea peor que el mercado y sin cuotas en el generador.
 
 ## 5. Partes críticas
 - `propdeep/model.py`: proyección, probabilidad, quitar margen, mezcla con el mercado y bloqueos.
@@ -117,7 +123,7 @@ Scripts (con el venv activado, desde la raíz):
 - Web: componentes `.jsx` con nombres en español, lógica en `src/lib/`, lint con oxlint.
 - Tests: cada cambio de lógica lleva su test en `tests/`, usando `tests/fakes.py` en vez de APIs reales.
 - Configuración centralizada en `propdeep/config.py` (`get_settings()`); defaults de la web en `web/src/config.js`. Una variable nueva va también en `.env.example`.
-- Endpoints: públicos `/board`, `/board/games/{id}`, `/board/top`, `/board/lines/{id}`, `/picks`, `/tipsters`, `/waitlist`, `/chat`, `/auth/*`, `/me`. Admin con cabecera `x-admin-token` (`/admin/*`, p. ej. `POST /admin/board`). Picks y paper bets solo para correos de `ADMIN_EMAILS`.
+- Endpoints: públicos `/board`, `/board/games/{id}`, `/board/lines/{id}`, `/picks`, `/tipsters`, `/waitlist`, `/chat`, `/auth/*`, `/me`. Admin con cabecera `x-admin-token` (`/admin/*`, p. ej. `POST /admin/board`, `POST /admin/analyze`). Picks y paper bets solo para correos de `ADMIN_EMAILS`.
 - La web NO usa cookies ni servicios o fuentes de terceros. La sesión va en `localStorage`. Existe la página legal de privacidad y cookies (`Cookies.jsx`, `Privacidad.jsx`) porque la ley la pide, pero solo explica que no hay cookies: no añadas ninguna sin decisión del autor.
 - Diseño: llamativo, blanco y negro con campo de tiros dorado; nada de fondo oscuro con neón ni estética de plantilla.
 
@@ -152,18 +158,19 @@ Web (`web/.env.local` o el hosting):
 - Sin afiliación ni patrocinios de casas de apuestas (Ley 13/2011, RD 958/2020).
 - RGPD básico, sin datos innecesarios.
 - Negocio futuro: suscripción de 15 €/mes o 120 €/año con 7 días gratis, plan Pro de 25 €/mes, pase de 7 días a 5 € y freemium de ~3 líneas al día. Preventa de 9 € eliminada.
-- Subida anunciada en la web: el mensual pasa a 19 € el 1-ene-2027 (`SUBIDA` en `web/src/lib/zona.js`). Hay que cumplirla o quitar el aviso.
+- El aviso de subida del mensual a 19 € el 1-ene-2027 se quitó de la web el 24-oct-2026: no hay nada que cumplir.
 - Desde el 21-oct-2026: primero uso personal en local; el lanzamiento comercial está aplazado.
 - Código del lanzamiento: TODO está ya en main. Lo básico (cuentas por enlace, Stripe mensual/anual con prueba de 7 días, muro freemium, chat) llegó antes; el PR #16 (correo por Resend) y el PR #15 (plan Pro, pase de 7 días, subida a 19 €, pausa, correo del día 5, dato del día, auditoría de tipsters) se fusionaron el 22-oct-2026. No queda ningún PR abierto. Lo que falta no es código sino configuración: precios en Stripe, despliegue en Railway, dominio y Resend, webhook.
-- Criterio de corte: tras 300 jugadas o el 31-dic-2026, ROI con la mejor cuota ≥ 0 → preparar el lanzamiento; negativo → herramienta personal y portafolio.
+- Criterio de corte: tras 300 jugadas o el 31-dic-2026, ROI con la mejor cuota ≥ 0 → preparar el lanzamiento; negativo → herramienta personal y portafolio. Pendiente de redefinir con el nuevo rumbo (ROADMAP D3): con 300 apuestas el IC del ROI es de ±11 pp (AUDIT §3.9).
 - Solo NBA; nada de fútbol ni tenis hasta tener suscriptores.
 - Próximo en estudio: backtest de robos, tapones y PRA cuando se renueven los créditos.
 
 ## 9. Pendiente de revisar
-- Umbral de ventaja casi inalcanzable. Con `MODEL_WEIGHT=0.2` y la ventaja medida frente a la probabilidad CON margen (`1/cuota`), el modelo tiene que separarse unos 28 pp del mercado para llegar a `MIN_EDGE=0.03`. Ejemplo con cuotas 1,90/1,90: mercado sin margen 50 %, con margen 52,6 % (el margen ya resta ~2,6 pp); hace falta `p_final` ≥ 55,6 %, es decir, `p_modelo` ≥ 78 %. En la práctica casi todo sale "sin ventaja". Hay que decidir si es intencionado (prudencia, dado que el backtest no mostró ventaja) o se ajusta (umbral o peso; la ventaja se sigue midiendo siempre frente a 1/cuota, que es lo que se paga de verdad). No cambiarlo sin decisión del autor y sin backtest.
+- Umbral de ventaja casi inalcanzable (se queda así: el bloque 1 del ROADMAP lo sustituye por la probabilidad calibrada). Con todas las casas por línea, `analisis_peso` da al modelo un peso de 0,06-0,08 y ninguna regla de peso y umbral con el IC por encima de 0. Con `MODEL_WEIGHT=0.2` y la ventaja medida frente a la probabilidad CON margen (`1/cuota`), el modelo tiene que separarse unos 28 pp del mercado para llegar a `MIN_EDGE=0.03`. Ejemplo con cuotas 1,90/1,90: mercado sin margen 50 %, con margen 52,6 % (el margen ya resta ~2,6 pp); hace falta `p_final` ≥ 55,6 %, es decir, `p_modelo` ≥ 78 %. En la práctica casi todo sale "sin ventaja". Hay que decidir si es intencionado (prudencia, dado que el backtest no mostró ventaja) o se ajusta (umbral o peso; la ventaja se sigue midiendo siempre frente a 1/cuota, que es lo que se paga de verdad). No cambiarlo sin decisión del autor y sin backtest.
 
 ## 10. Reglas para Claude Code
-- Antes de cambiar lógica de cálculo, escribe un test que cubra el comportamiento actual. `pytest` en verde antes de cada commit.
+- Claude Code coordina el proyecto desde el 23-oct-2026: trabaja por bloques del `ROADMAP.md`, una rama por bloque y un commit por tarea, y actualiza el ROADMAP (estado y registro) en cada tarea. El autor fusiona los PR y decide lo marcado como DECIDE EL AUTOR.
+- Antes de cambiar lógica de cálculo, escribe un test que cubra el comportamiento actual. `pytest` en verde antes de cada commit. Si cambia un cálculo del modelo, sube `MODEL_VERSION` en `model.py`.
 - Cambios pequeños, un commit por cambio lógico.
 - No toques archivos `.env` ni subas claves ni datos personales.
 - No gastes créditos de The Odds API sin avisar: estima primero.

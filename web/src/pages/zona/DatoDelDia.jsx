@@ -181,7 +181,7 @@ export default function DatoDelDia() {
       </p>
       <div className="mt-8">
         {estado.cargando ? <Cargando filas={2} /> : estado.error === 'sin-servidor' ? (
-          <p className="border border-dashed border-white/40 px-5 py-6 text-muted">Funciona con los datos reales desde el 20 de octubre. Mientras, pruébalo con <a className="underline" href="?demo=1">la demostración</a>.</p>
+          <p className="border border-dashed border-white/40 px-5 py-6 text-muted">Funciona con los datos reales de una jornada publicada. Mientras, pruébalo con <a className="underline" href="?demo=1">la demostración</a>.</p>
         ) : estado.error ? <Fallo /> : !linea ? (
           <p className="text-muted">Hoy no hay líneas gratis publicadas todavía.</p>
         ) : (

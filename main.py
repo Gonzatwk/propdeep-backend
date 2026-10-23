@@ -1,6 +1,7 @@
 """API de PropDeep: análisis de player props de la NBA con datos reales (información orientativa)."""
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from datetime import date, datetime
 from functools import lru_cache
@@ -18,6 +19,8 @@ from propdeep.mailer import send_login_link, send_trial_reminder
 from propdeep.narrative import template_report, write_report
 from propdeep.pipeline import Analyzer, scan_day
 from propdeep.track_record import settle, summary
+
+log = logging.getLogger("propdeep.api")
 
 DISCLAIMER = (
     "Información estadística orientativa para mayores de 18 años. No es una recomendación de "
@@ -122,9 +125,10 @@ def health():
     return {"ok": True}
 
 
-@app.post("/analyze")
+@app.post("/admin/analyze", dependencies=[Depends(require_admin)])
 def analyze_prop(req: PropRequest, an: Analyzer = Depends(analyzer)):
-    """Analiza una prop sin publicarla en el historial."""
+    """Analiza una prop sin publicarla en el historial. Solo admin: devuelve el veredicto interno
+    y cada llamada gasta Balldontlie y Claude."""
     analysis, report, _ = _run(req, an)
     return {"analysis": analysis, "report": report, "disclaimer": DISCLAIMER}
 
@@ -438,20 +442,6 @@ def get_game(event_id: str, user=Depends(current_user)):
         }
 
 
-@app.get("/board/top")
-def get_top(game_date: date | None = None, limit: int = 40, user=Depends(current_user)):
-    """Mejores proyecciones de la noche: las líneas por jugar más alejadas de la proyección."""
-    with session_factory()() as session:
-        day = game_date.isoformat() if game_date else board.default_date(session)
-        lines = board.board_lines(session, game_date=day) if day else []
-        return {
-            "game_date": day,
-            "viewer": _viewer(user),
-            "lines": board.top_lines(lines, _sees_all(user), limit=min(max(limit, 1), 100)),
-            "disclaimer": DISCLAIMER,
-        }
-
-
 @app.get("/board/lines/{line_id}")
 def get_line(line_id: int, user=Depends(current_user)):
     """Informe completo de una línea. 402 si hace falta suscripción."""
@@ -484,6 +474,7 @@ def build_board(game_date: date, max_events: int | None = None, an: Analyzer = D
             moneyline.refresh(session, odds_client(), game_date, force=True)
         except Exception:  # noqa: BLE001 - las cuotas a ganador son un extra
             session.rollback()
+            log.exception("No se pudieron traer las cuotas a ganador")
         out = {"published": len(published), "free": sum(1 for p in published if p.free)}
     # Se publica la jornada una vez al día: aprovechamos para mandar los avisos de la prueba.
     out["trial_reminders"] = trial_reminders()["sent"]
@@ -515,9 +506,7 @@ def trial_reminders():
 def start_auto_jornada():
     s = settings()
     if s.local_login and not s.local_login_enabled:
-        import logging
-
-        logging.getLogger("propdeep").warning("LOCAL_LOGIN se ignora: WEB_URL no es localhost")
+        log.warning("LOCAL_LOGIN se ignora: WEB_URL no es localhost")
     if s.auto_jornada:
         auto.start(session_factory(), lambda: (analyzer(), odds_client(), bdl_client(), board_report), s)
 
