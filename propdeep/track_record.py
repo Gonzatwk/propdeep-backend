@@ -36,6 +36,7 @@ def settle(session: Session, bdl: BalldontlieClient, now: datetime | None = None
 
     Un partido que falla (API caída, datos raros) no frena a los demás: se reintenta en la
     siguiente liquidación."""
+    from .feed import pending_cards
     from .picks import pending_ml_unlinked, pending_with_game, refresh_parlays
 
     now = now or _now()
@@ -44,7 +45,8 @@ def settle(session: Session, bdl: BalldontlieClient, now: datetime | None = None
     except Exception:  # noqa: BLE001 - se reintenta en la próxima liquidación
         session.rollback()
         log.exception("No se pudieron emparejar las apuestas a ganador")
-    pend = pending(session)
+    # Predicciones del modelo y tarjetas del feed: se liquidan igual (jugador, línea y lado).
+    pend = [*pending(session), *pending_cards(session)]
     settled = _void_unlinked(pend, now)
     by_game: dict[int, list] = defaultdict(list)
     for p in [*pend, *pending_with_game(session)]:
@@ -67,7 +69,7 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _void_unlinked(preds: list[Prediction], now: datetime) -> list[Prediction]:
+def _void_unlinked(preds: list, now: datetime) -> list:
     """Anula las predicciones que nunca tuvieron partido de Balldontlie y ya pasó su jornada."""
     limit = (now - timedelta(days=UNLINKED_DAYS)).date().isoformat()
     out = []

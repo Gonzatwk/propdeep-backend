@@ -15,7 +15,7 @@ from typing import Callable
 from sqlalchemy import DateTime, Integer, String, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
-from . import fair
+from . import fair, feed
 from .db import Base, Prediction, publish
 from .model import Analysis
 
@@ -121,6 +121,8 @@ def publish_board(
         published.append(
             publish(session, analysis=data, report=write_report(analysis, meta), meta=meta, commit=False)
         )
+    session.flush()  # ids para las tarjetas del feed
+    feed.publish_cards(session, published)
     session.commit()
     return published
 
