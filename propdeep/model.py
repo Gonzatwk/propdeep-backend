@@ -12,6 +12,10 @@ from statistics import mean, pstdev
 
 STAT_LABELS = {"pts": "puntos", "reb": "rebotes", "ast": "asistencias", "fg3m": "triples"}
 
+# Versión de la lógica del modelo. Se sube a mano cada vez que cambia un cálculo, para que el
+# historial no mezcle predicciones de modelos distintos al medir el rendimiento.
+MODEL_VERSION = "2026.10.24"
+
 # Desviación mínima por estadística: evita probabilidades extremas con muestras cortas.
 MIN_SD = {"pts": 4.0, "reb": 2.0, "ast": 1.8, "fg3m": 1.0}
 
@@ -100,6 +104,11 @@ class Analysis:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+def model_version(model_weight: float, min_edge: float, teammate_adjust: bool) -> str:
+    """Versión y parámetros con los que se hizo una predicción (se guarda con ella)."""
+    return f"{MODEL_VERSION} peso={model_weight:g} ventaja={min_edge:g} companeros={int(bool(teammate_adjust))}"
 
 
 def _avg(xs: list[float]) -> float | None:

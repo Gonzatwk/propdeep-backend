@@ -7,7 +7,8 @@ from statistics import mean
 
 from .clients.balldontlie import BalldontlieClient, minutes
 from .clients.odds import MARKETS, OddsClient, PropLine, book_rows, main_lines
-from .model import Analysis, Context, analyze, compute_splits, compute_trends, is_key_teammate, teammate_out_factor
+from .model import (Analysis, Context, analyze, compute_splits, compute_trends, is_key_teammate, model_version,
+                    teammate_out_factor)
 
 MIN_OPPONENT_GAMES = 5
 # Estados del parte de lesiones que cuentan como "no juega" para el ajuste por compañeros.
@@ -92,6 +93,7 @@ class Analyzer:
             "team_id": team_id,
             "game_id": game["id"] if game else None,
             "game_date": game_day.isoformat(),
+            "model_version": model_version(self.model_weight, self.min_edge, self.teammate_adjust),
         }
         return result, meta
 

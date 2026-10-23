@@ -10,6 +10,10 @@ from .clients.balldontlie import BalldontlieClient, minutes
 from .db import Prediction, pending
 
 
+# Predicciones sin versión: las del 21-oct-2026, con peso 0,5 y sin el bloqueo de 3 partidos.
+OLD_VERSION = "sin versión (antes del 24-oct-2026)"
+
+
 def grade(side: str, line: float, actual: float) -> str:
     if actual == line:
         return "push"
@@ -112,11 +116,14 @@ def summary(predictions: list[Prediction]) -> dict:
         }
 
     picks = [p for p in predictions if p.side]
-    by_conf = defaultdict(list)
+    by_conf, by_version = defaultdict(list), defaultdict(list)
     for p in picks:
         by_conf[p.confidence].append(p)
+        by_version[p.model_version or OLD_VERSION].append(p)
     return {
         "overall": block(picks),
         "by_confidence": {k: block(v) for k, v in sorted(by_conf.items())},
+        # Para medir el modelo, cada versión por separado: mezclarlas no dice nada.
+        "by_version": {k: block(v) for k, v in sorted(by_version.items())},
         "no_bet_analyses": sum(1 for p in predictions if not p.side),
     }
