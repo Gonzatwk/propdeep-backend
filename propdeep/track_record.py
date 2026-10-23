@@ -141,6 +141,7 @@ def _link_moneylines(session: Session, bdl, picks: list) -> None:
         try:
             games = bdl.games_on(datetime.fromisoformat(day).date())
         except Exception:  # noqa: BLE001 - se reintenta en la próxima liquidación
+            log.exception("No se pudieron traer los partidos del %s para las apuestas a ganador", day)
             continue
         for p in ps:
             home = _nickname(p.home_team)

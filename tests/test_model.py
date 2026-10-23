@@ -240,3 +240,44 @@ def test_analyzer_adjusts_for_injured_key_teammate():
     off, _ = Analyzer(bdl, 2026, 0.03, 0.2, teammate_adjust=False).analyze_prop("Luka Doncic", "pts", 26.5, 1.9, 1.9, DAY)
     assert off.context.teammates_out and off.context.teammate_factor == 1.0
     assert off.projection < result.projection
+
+
+def test_broken_odds_entries_are_skipped_not_fatal():
+    from propdeep.clients.odds import parse_all_props
+
+    payload = {"id": "e", "bookmakers": [
+        {"markets": [{"key": "player_points", "outcomes": []}]},  # casa sin nombre
+        {"key": "bk", "markets": [{"key": "player_points", "outcomes": [
+            {"name": "Over", "description": "Luka Doncic", "point": 27.5, "price": 1.9},
+            {"name": "Under", "description": "Luka Doncic", "point": 27.5, "price": 1.9},
+            {"name": "Over", "description": "Sin Cuota", "point": 10.5},
+            {"name": "Under", "description": "Sin Cuota", "point": 10.5, "price": "n/a"},
+            {"name": "Over", "point": 5.5, "price": 1.9},  # sin jugador
+        ]}]},
+    ]}
+    props = parse_all_props(payload)
+    assert [(p.player, p.line) for p in props] == [("Luka Doncic", 27.5)]
+
+
+def test_scan_day_survives_an_unexpected_error_on_one_prop():
+    from datetime import date
+
+    from propdeep.clients.odds import PropLine
+    from propdeep.pipeline import scan_day
+
+    class Odds:
+        def events_on(self, day):
+            return [{"id": "e1"}]
+
+        def player_props(self, event):
+            mk = lambda name: PropLine("e1", "t", "h", "a", name, "player_points", 20.5, 1.9, 1.9, "bk")  # noqa: E731
+            return [mk("Raro"), mk("Bueno")]
+
+    class Analyzer:
+        def analyze_prop(self, player, *args, **kwargs):
+            if player == "Raro":
+                raise TypeError("dato inesperado")
+            return type("A", (), {"edge": 0.0})(), {}
+
+    results = scan_day(Analyzer(), Odds(), date(2026, 11, 20))
+    assert len(results) == 1 and results[0][2].player == "Bueno"

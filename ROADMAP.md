@@ -64,7 +64,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 | 0.5 | Corregir `--todas-casas` (todas las casas por línea), repetir el backtest `--sin-companeros` desde la caché y luego `analisis_peso` | AUDIT C1, M2 | B | HECHO (6a0388c) |
 | 0.6 | Jornada automática: volver a los partidos publicados a medias y no repetir sin fin los que no tienen líneas | AUDIT C5 | M | HECHO |
 | 0.7 | Alias de nombres (Herb Jones, Bones Hyland, Moe Wagner…) | AUDIT C6 | B | HECHO |
-| 0.8 | Errores registrados y `KeyError` de datos externos controlados en `scan_day` y en la liquidación | AUDIT C7 | B | PENDIENTE |
+| 0.8 | Errores registrados y `KeyError` de datos externos controlados en `scan_day` y en la liquidación | AUDIT C7 | B | HECHO |
 | 0.9 | Umbrales "X+" y líneas enteras bien tratados en `prob_over` | AUDIT M10 | B | PENDIENTE |
 | 0.10 | Textos de la web: fuera "20 de octubre", las promesas no cubiertas y el aviso de subida | AUDIT S5, S6 | B | PENDIENTE |
 | 0.11 | Avisos: +18, juego responsable (jugarbien.es, RGIAJ) y "no es consejo de apuestas" | PLAN §5 | B | PENDIENTE |
@@ -144,3 +144,4 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | 0.5: backtest con todas las casas y `--solo-cache`. Repetido sin compañeros (0 créditos): 584 jugadas, ROI +1,8 % (IC −5,7 % a +9,6 %). Con hasta 8 casas por línea, `analisis_peso` da un peso del modelo de 0,06-0,08 y ninguna regla con el IC por encima de 0. El peso no se toca ahora: lo sustituye la calibración del bloque 1 |
 | 24-oct-2026 | 0.6: la jornada automática apunta cada petición de cuotas (`event_scans`). Un partido sin líneas o con mercados sin colgar se repasa a 3 h y a 1 h del inicio (máximo 3 peticiones, no una cada 20 min); un partido que falla no frena a los demás |
 | 24-oct-2026 | 0.7: alias de 7 apodos sacados de la caché (Ace Bailey, Herb Jones, Bones Hyland…); `find_player` busca por el apellido sin sufijo ("Jaren Jackson Jr." ya no busca "Jr."); el backtest usa los mismos alias |
+| 24-oct-2026 | 0.8: cuotas rotas de The Odds API se saltan sin tumbar el partido; un fallo inesperado en una prop no corta la jornada; los errores que antes se tragaban ahora quedan en el log |

@@ -1,6 +1,7 @@
 """Une datos reales (Balldontlie + The Odds API) con el modelo y la redacción."""
 from __future__ import annotations
 
+import logging
 from datetime import date
 from typing import Callable
 from statistics import mean
@@ -9,6 +10,8 @@ from .clients.balldontlie import BalldontlieClient, minutes
 from .clients.odds import MARKETS, OddsClient, PropLine, book_rows, main_lines
 from .model import (Analysis, Context, analyze, compute_splits, compute_trends, is_key_teammate, model_version,
                     teammate_out_factor)
+
+log_errors = logging.getLogger("propdeep.pipeline")
 
 MIN_OPPONENT_GAMES = 5
 # Estados del parte de lesiones que cuentan como "no juega" para el ajuste por compañeros.
@@ -244,6 +247,10 @@ def scan_day(
                 )
             except (LookupError, ValueError) as exc:
                 log(f"  descartada {prop.player} {stat} {prop.line}: {exc}")
+                continue
+            except Exception:  # noqa: BLE001 - un dato raro no debe tumbar un partido ya pagado
+                log_errors.exception("Fallo inesperado con %s %s %s; se sigue con el resto",
+                                     prop.player, stat, prop.line)
                 continue
             meta.update(bookmaker=prop.bookmaker, event_id=prop.event_id, books=book_rows(rows))
             results.append((analysis, meta, prop))
