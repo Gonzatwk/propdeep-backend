@@ -15,6 +15,7 @@ from typing import Callable
 from sqlalchemy import DateTime, Integer, String, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from . import fair
 from .db import Base, Prediction, publish
 from .model import Analysis
 
@@ -113,7 +114,10 @@ def publish_board(
     published = []
     for i, (analysis, meta) in enumerate(fresh):
         meta = {**meta, "free": i in free, "commence_time": _parse_time(meta["commence_time"])}
-        data = {**analysis.to_dict(), "books": meta["books"]}
+        data = {**analysis.to_dict(), "books": meta["books"],
+                # Precio justo y probabilidad estimada (calibrada): base del feed y las combinadas.
+                "estimate": fair.estimate(analysis.stat, analysis.line, analysis.prob_over_model,
+                                          analysis.prob_over_market, analysis.trends.sd, meta["books"])}
         published.append(
             publish(session, analysis=data, report=write_report(analysis, meta), meta=meta, commit=False)
         )
