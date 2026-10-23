@@ -19,6 +19,9 @@ from .nota import nota
 
 # Nota mínima para salir en el feed (con los datos de 2025-26, ~1 de cada 9 líneas).
 FEED_MIN_SCORE = 60
+# Sin cuotas en pantalla, una "mejor jugada" con menos del 50 % confunde: solo puede salir a cuenta
+# con cuotas por encima de 2,00, que en las casas españolas casi no hay. Fuera del feed.
+FEED_MIN_PROB = 0.5
 
 
 class FeedCard(Base):
@@ -54,7 +57,7 @@ def publish_cards(session: Session, predictions: list[Prediction], now: datetime
     cards = []
     for p in predictions:
         n = nota(p.analysis or {})
-        if n is None or n.score < FEED_MIN_SCORE:
+        if n is None or n.score < FEED_MIN_SCORE or n.prob < FEED_MIN_PROB:
             continue
         record = {"prediction_id": p.id, "game_date": p.game_date, "player_id": p.player_id,
                   "player_name": p.player_name, "stat": p.stat, "line": p.line, "side": n.side,

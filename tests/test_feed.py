@@ -53,3 +53,15 @@ def test_cards_settle_with_the_games_and_feed_the_history(api, monkeypatch):
     assert len(settled) == len(cards)
     h = api.c.get(f"/feed?game_date={DAY}").json()["history"]
     assert h["settled"] == len(cards) and h["won"] + h["lost"] == len(cards) and 0 < h["avg_prob"] < 1
+
+
+def test_sides_below_fifty_percent_do_not_make_the_feed(api, monkeypatch):
+    # Sin cuotas en pantalla, una "mejor jugada" con menos del 50 % confundiría.
+    cards = _publish(api, monkeypatch)
+    assert cards and all(c.prob >= feed.FEED_MIN_PROB for c in cards)
+    monkeypatch.setattr(feed, "FEED_MIN_PROB", 1.0)
+    with main.session_factory()() as s:
+        s.query(feed.FeedCard).delete()
+        s.query(main.Prediction).delete()
+        s.commit()
+    assert _publish(api, monkeypatch) == []
