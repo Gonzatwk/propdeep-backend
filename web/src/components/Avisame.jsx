@@ -53,7 +53,7 @@ export default function Avisame() {
         <CheckCircle weight="fill" aria-hidden className="mt-0.5 size-7 shrink-0 text-gold" />
         <p className="text-lg leading-snug">
           <strong className="display block text-3xl text-gold">Apuntado</strong>
-          Te escribiremos el 20 de octubre, cuando abra PropDeep.
+          Te escribiremos cuando abra PropDeep.
         </p>
       </div>
     )

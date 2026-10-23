@@ -1,7 +1,7 @@
 import { ArrowClockwise, ArrowLeft, Eye, LockSimple } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { useModo } from '../lib/tablero'
-import { PRECIO, TEXTO_SUBIDA, subidaPendiente, useIrASuscribir } from '../lib/zona'
+import { PRECIO, useIrASuscribir } from '../lib/zona'
 
 
 // Contenedor de las páginas de la zona: fondo opaco para leer datos sin ruido.
@@ -34,7 +34,7 @@ export function AvisoDemo({ sinVista = false }) {
   return (
     <div role="note" className="mb-8 flex flex-col gap-3 bg-gold px-4 py-3 text-black sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm font-medium">
-        <strong className="font-extrabold">Demostración.</strong> Jugadores y números inventados para enseñar cómo se verá. Los datos reales empiezan el 20 de octubre.
+        <strong className="font-extrabold">Demostración.</strong> Jugadores y números inventados para enseñar cómo se verá.
       </p>
       {!sinVista && <div className="flex shrink-0 items-center gap-1 self-start border-2 border-black sm:self-auto" aria-label="Ver como">
         <Eye aria-hidden className="ml-2 size-4" />
@@ -94,7 +94,6 @@ export function Muro({ bloqueadas, compacto = false }) {
         las líneas de cada casa, el informe y el chat para preguntar por los datos. Prueba {PRECIO.prueba} días gratis;
         después {PRECIO.mensual} € al mes, {PRECIO.anual} € al año o Pro a {PRECIO.pro} € con el chat completo. Cancelas cuando quieras.
       </p>
-      {subidaPendiente() && <p className="mt-3 max-w-xl text-sm font-semibold">{TEXTO_SUBIDA}</p>}
       <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
         <Link to={destino} className="btn btn-gold h-12 px-6 text-lg">
           Probar {PRECIO.prueba} días gratis

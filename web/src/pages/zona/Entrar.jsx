@@ -65,7 +65,7 @@ export default function Entrar() {
     return (
       <Pagina ancho="max-w-xl">
         <h1 className="display text-[3rem] leading-none">Entrar</h1>
-        <p className="mt-4 text-lg text-muted">Las cuentas se abren el 20 de octubre, con el inicio de la temporada.</p>
+        <p className="mt-4 text-lg text-muted">Las cuentas se abrirán cuando PropDeep salga de las pruebas privadas.</p>
         <Link to="/#avisame" className="btn btn-gold mt-8 h-12 px-6 text-lg">Avísame cuando abra</Link>
       </Pagina>
     )

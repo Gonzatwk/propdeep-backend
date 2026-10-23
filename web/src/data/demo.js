@@ -1,4 +1,4 @@
-// Jornada de DEMOSTRACIÓN para enseñar la zona de partidos antes del 20 de octubre.
+// Jornada de DEMOSTRACIÓN para enseñar la zona de partidos sin datos reales.
 // Los jugadores son INVENTADOS y los números salen de un generador con semilla fija:
 // no son análisis reales y la web los marca siempre como "Demostración".
 // Tiene la misma forma que las respuestas de /board, /board/games/{id}, /board/lines/{id} y /picks.

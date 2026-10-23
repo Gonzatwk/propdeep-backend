@@ -7,13 +7,13 @@ import LaLinea from '../components/LaLinea'
 import { CONTACT_EMAIL } from '../config'
 import { FECHA_EJEMPLOS, informesLanding } from '../data/informes'
 import { fmtNum, fmtPct } from '../format'
-import { PRECIO, TEXTO_SUBIDA, subidaPendiente } from '../lib/zona'
+import { PRECIO } from '../lib/zona'
 
 
 const preguntas = [
-  ['Tendencias', 'Últimos 5, 10 y 20 partidos, minutos y uso. ¿El jugador está por encima o por debajo de su media?'],
-  ['Matchup', 'Cómo defiende el rival esa estadística y en qué posición. Ritmo de juego esperado.'],
-  ['Contexto', 'Back-to-back, viajes, bajas del equipo y del rival, riesgo de paliza.'],
+  ['Tendencias', 'Últimos 5, 10 y 20 partidos y sus minutos. ¿El jugador está por encima o por debajo de su media?'],
+  ['Matchup', 'Cómo le ha ido contra ese rival y, en puntos, cuánto concede el rival frente a la media de la liga.'],
+  ['Contexto', 'Casa o fuera, back-to-back y el parte de lesiones del jugador.'],
   ['La línea', 'Cuántas veces la superó en los últimos 5 y 10 partidos y en la temporada, en casa, fuera y contra ese rival.'],
   ['Las casas', 'La misma prop en varias casas, con su línea y su cuota, para que veas dónde está mejor antes de decidir.'],
 ]
@@ -76,7 +76,7 @@ function Hero() {
             </a>
           </div>
           <p className="rise mt-5 text-sm text-muted" style={{ '--i': 10 }}>
-            Abre el 20 de octubre con 7 días de prueba gratis. Solo mayores de 18 años.
+            En pruebas privadas. Cuando abra, 7 días de prueba gratis. Solo mayores de 18 años.
           </p>
           <Leyenda className="rise mt-8" />
         </div>
@@ -240,14 +240,14 @@ function TarjetaInforme({ informe }) {
   )
 }
 
-// Hasta el 20 de octubre: la ficha en blanco de un informe, sin datos inventados.
+// Mientras no haya ejemplos reales publicados: la ficha en blanco de un informe, sin datos inventados.
 function EjemplosPendientes() {
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
       <div>
-        <p className="display text-[2.8rem] text-gold">Llegan el 20 de octubre</p>
+        <p className="display text-[2.8rem] text-gold">Llegan al abrir</p>
         <p className="mt-3 max-w-md text-lg leading-relaxed text-muted">
-          Los publicaremos con datos reales del primer día de la temporada regular. Aquí no inventamos ejemplos.
+          Los publicaremos con datos reales de una jornada jugada. Aquí no inventamos ejemplos.
         </p>
       </div>
       <div className="lift border-2 border-white/40">
@@ -320,7 +320,7 @@ function Precio() {
     <section id="precio" className="relative bg-gold text-black">
       <div id="avisame" className="mx-auto grid max-w-6xl scroll-mt-20 gap-12 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1.2fr_1fr] lg:gap-16">
         <div>
-          <Titulo>Abre el 20 de octubre. Te avisamos.</Titulo>
+          <Titulo>Cuando abra, te avisamos.</Titulo>
           <p className="mt-8 flex items-end gap-5">
             <span className="display lift tnum text-[9rem] leading-[0.78] sm:text-[12rem]">7</span>
             <span className="pb-3 text-lg leading-snug font-medium">días de prueba gratis<br />con acceso completo</span>
@@ -348,7 +348,6 @@ function Precio() {
             ))}
           </dl>
           <p className="mt-4 text-sm">¿Solo una semana? Pase de 7 días por {PRECIO.pase} €, sin renovación.</p>
-          {subidaPendiente() && <p className="mt-4 border-2 border-black px-4 py-3 font-semibold">{TEXTO_SUBIDA}</p>}
           <p className="mt-6 text-sm leading-relaxed">
             Solo usamos tu correo para avisarte de la apertura. ¿Dudas? Escríbenos a{' '}
             <a className="font-semibold underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.

@@ -95,8 +95,8 @@ export default function Partidos() {
           <Cargando />
         ) : error === 'sin-servidor' || (!error && juegos.length === 0) ? (
           <Vacio
-            titulo="Los partidos llegan el 20 de octubre"
-            texto="Con el primer día de la temporada regular. Aquí verás cada partido, sus jugadores y los datos de cada línea, comparada entre casas."
+            titulo="Todavía no hay partidos publicados"
+            texto="Aquí verás cada partido, sus jugadores y los datos de cada línea, comparada entre casas."
           />
         ) : error ? (
           <Fallo reintentar={reintentar} />
