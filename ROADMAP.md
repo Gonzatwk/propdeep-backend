@@ -62,7 +62,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 | 0.3 | Guardar versión y parámetros del modelo en cada predicción (también en el hash). Marcar las del 21-oct como configuración antigua sin editarlas | AUDIT C2, M3 | B | HECHO (ea81bf9) |
 | 0.4 | Liquidación robusta: no anular si el boxscore viene vacío, `try` por partido y anulación manual de las predicciones sin `game_id`. Con tests | AUDIT C3, C4 | M | HECHO (1d2e43d) |
 | 0.5 | Corregir `--todas-casas` (todas las casas por línea), repetir el backtest `--sin-companeros` desde la caché y luego `analisis_peso` | AUDIT C1, M2 | B | HECHO (6a0388c) |
-| 0.6 | Jornada automática: volver a los partidos publicados a medias y no repetir sin fin los que no tienen líneas | AUDIT C5 | M | PENDIENTE |
+| 0.6 | Jornada automática: volver a los partidos publicados a medias y no repetir sin fin los que no tienen líneas | AUDIT C5 | M | HECHO |
 | 0.7 | Alias de nombres (Herb Jones, Bones Hyland, Moe Wagner…) | AUDIT C6 | B | PENDIENTE |
 | 0.8 | Errores registrados y `KeyError` de datos externos controlados en `scan_day` y en la liquidación | AUDIT C7 | B | PENDIENTE |
 | 0.9 | Umbrales "X+" y líneas enteras bien tratados en `prob_over` | AUDIT M10 | B | PENDIENTE |
@@ -142,3 +142,4 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | 0.3: `model_version` en cada predicción y dentro del hash; `db.verify()` (las 513 actuales verifican); resumen por versión |
 | 24-oct-2026 | 0.4: liquidación sin anulaciones falsas (boxscore vacío), aplazados y predicciones sin partido se anulan, un partido que falla no frena al resto |
 | 24-oct-2026 | 0.5: backtest con todas las casas y `--solo-cache`. Repetido sin compañeros (0 créditos): 584 jugadas, ROI +1,8 % (IC −5,7 % a +9,6 %). Con hasta 8 casas por línea, `analisis_peso` da un peso del modelo de 0,06-0,08 y ninguna regla con el IC por encima de 0. El peso no se toca ahora: lo sustituye la calibración del bloque 1 |
+| 24-oct-2026 | 0.6: la jornada automática apunta cada petición de cuotas (`event_scans`). Un partido sin líneas o con mercados sin colgar se repasa a 3 h y a 1 h del inicio (máximo 3 peticiones, no una cada 20 min); un partido que falla no frena a los demás |
