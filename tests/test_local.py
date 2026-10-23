@@ -103,14 +103,3 @@ def test_background_loop_runs_a_tick(tmp_path, monkeypatch):
     thread = auto.start(make_session_factory(s.database_url), lambda: ("an", "odds", "bdl", "r"), s)
     assert seen.wait(5)
     thread.stop.set()
-
-
-def test_top_projections_rank_open_lines_by_distance(api):
-    api.c.post(f"/admin/board?game_date={DAY}", headers={"x-admin-token": "secreto"})
-    r = api.c.get(f"/board/top?game_date={DAY}").json()
-    # Sin suscripción solo entran las líneas abiertas (aquí, la gratis).
-    assert len(r["lines"]) == 1 and r["lines"][0]["free"]
-    top = r["lines"][0]
-    assert top["direction"] == "over" and top["diff"] > 0 and top["game"]["event_id"] == "ev1"
-    for key in ("side", "confidence", "edge", "probability"):
-        assert key not in top

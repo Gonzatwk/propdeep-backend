@@ -174,30 +174,6 @@ def line_detail(p: Prediction) -> dict:
     }
 
 
-def top_lines(lines: list[Prediction], subscriber: bool, limit: int = 40, now: datetime | None = None) -> list[dict]:
-    """Líneas de partidos por empezar con más distancia entre la proyección y la línea,
-    medida en desviaciones típicas del jugador (así puntos y triples se comparan bien).
-    Es un dato, no una recomendación: el backtest no mostró ventaja con la proyección sola.
-    Fuera los jugadores lesionados o con poca muestra, y las líneas bloqueadas."""
-    out = []
-    for p in lines:
-        a = p.analysis or {}
-        proj = a.get("projection")
-        if proj is None or a.get("reasons") or started(p, now) or not is_unlocked(p, subscriber, now):
-            continue
-        sd = max((a.get("trends") or {}).get("sd") or 0.0, 1.0)
-        diff = proj - p.line
-        out.append({
-            **line_summary(p, True),
-            "game": game_header(p),
-            "diff": round(diff, 2),
-            "diff_pct": round(diff / p.line, 4) if p.line else None,
-            "score": round(abs(diff) / sd, 3),
-            "direction": "over" if diff > 0 else "under",
-        })
-    return sorted(out, key=lambda x: -x["score"])[:limit]
-
-
 def game_header(p: Prediction) -> dict:
     start = _aware(p.commence_time)
     return {

@@ -51,7 +51,3 @@ export const useLinea = (id) =>
   useCarga((s) => demoLinea(id, s), `/board/lines/${encodeURIComponent(id)}`, [id])
 
 export const usePicks = (version = 0) => useCarga(demoPicks, '/picks', [version])
-
-// Mejores proyecciones de la noche (sin demostración: solo con datos reales).
-export const useTop = (fecha) =>
-  useCarga(() => null, fecha ? `/board/top?game_date=${fecha}` : '/board/top', [fecha])

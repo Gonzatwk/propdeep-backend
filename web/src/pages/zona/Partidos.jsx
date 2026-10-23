@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarBlank, ChartLineUp, ChatCircleText } from '@phosphor-icons/react'
+import { ArrowRight, CalendarBlank, ChatCircleText } from '@phosphor-icons/react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { MoneylineCorta } from '../../components/Moneyline'
 import { AvisoDemo, AvisoResponsable, Cargando, Fallo, Muro, Pagina } from '../../components/Zona'
@@ -57,11 +57,6 @@ export default function Partidos() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="display text-[3.4rem] leading-none sm:text-[5rem]">Partidos</h1>
         <div className="flex flex-wrap gap-2">
-          {!demo && (
-            <Link to={fecha ? `/proyecciones?fecha=${fecha}` : '/proyecciones'} className="btn btn-gold h-11 px-4">
-              <ChartLineUp aria-hidden className="size-5" /> Mejores proyecciones
-            </Link>
-          )}
           <Link to={enlace('/chat')} className="btn btn-ghost h-11 px-4">
             <ChatCircleText aria-hidden className="size-5" /> Pregunta a PropDeep
           </Link>
