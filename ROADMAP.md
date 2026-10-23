@@ -19,8 +19,8 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | Siguiente | Estado |
 |---|---|
-| Fusionar el PR de `mvp/bloque-0` (bloque 0 completo) | PENDIENTE (lo fusiona el autor) |
-| Fusionar el PR de `mvp/bloque-1` (después del de `mvp/bloque-0`, del que sale) | PENDIENTE (lo fusiona el autor) |
+| Fusionar el PR #23 (bloque 0) | PENDIENTE (lo fusiona el autor) |
+| Fusionar el PR #24 (bloque 1), después del #23 | PENDIENTE (lo fusiona el autor) |
 | Bloque 2: nota y feed de mejores jugadas | SIGUIENTE |
 
 ## Fechas clave
@@ -153,3 +153,4 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | 0.11: el pie de página tiene el título visible "Juego responsable" y el aviso de autoexclusión en el RGIAJ de la DGOJ, además de +18, "no son recomendaciones" y jugarbien.es |
 | 24-oct-2026 | 0.12: CLAUDE.md al día (rumbo, documentos, endpoints, versión del modelo, liquidación, jornada automática, reglas de coordinación). Bloque 0 terminado |
 | 24-oct-2026 | Bloque 1: `propdeep/fair.py` (precio justo, calibración Platt, distribución anclada) y `scripts/calibracion.py`. Mes a mes, la probabilidad estimada mejora por poco el log-loss del mercado (0,69156 frente a 0,69190; la mezcla al 20 % lo empeoraba: 0,69225). Con desviación × 1,06, la distribución anclada acierta mejor que las casas en 112.886 líneas alternativas. Resultados en PLAN-PLATAFORMA §2.4. Cada línea publicada guarda ya su estimación |
+| 24-oct-2026 | PR #23 (bloque 0) y #24 (bloque 1) abiertos con `gh` |
