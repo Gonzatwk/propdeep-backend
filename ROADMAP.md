@@ -9,7 +9,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 **Esfuerzo:** B = 1 día o menos · M = 2-4 días · A = 5 días o más.
 
 **Cómo se trabaja**
-- Una tarea = un commit con su test y `pytest` en verde, en una rama por bloque. El autor fusiona el PR.
+- Una tarea = un commit con su test y `pytest` en verde, en una rama por bloque. Al terminar el bloque, Claude Code abre el PR y lo fusiona con los tests en verde (decisión del autor del 24-oct-2026), y lo cuenta en el resumen.
 - Lo que marca DECIDE EL AUTOR no se toca hasta que decida, y se le pregunta de una en una.
 - Nada de gastar créditos de The Odds API sin estimarlos antes y avisar.
 
@@ -19,7 +19,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | Siguiente | Estado |
 |---|---|
-| Bloque 2: nota y feed de mejores jugadas | SIGUIENTE |
+| Bloque 2: nota y feed de mejores jugadas, en la rama `mvp/bloque-2` | EN CURSO |
 
 ## Fechas clave
 
