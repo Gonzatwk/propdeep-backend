@@ -10,7 +10,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Re
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from propdeep import accounts, auto, billing, board, chat, moneyline, paper, picks, tipsters
+from propdeep import accounts, auto, billing, board, chat, feed, moneyline, paper, picks, tipsters
 from propdeep.clients.balldontlie import BalldontlieClient
 from propdeep.clients.odds import OddsClient
 from propdeep.config import Settings, get_settings
@@ -25,6 +25,11 @@ log = logging.getLogger("propdeep.api")
 DISCLAIMER = (
     "Información estadística orientativa para mayores de 18 años. No es una recomendación de "
     "apuesta ni garantiza ganar: apostar implica riesgo de perder dinero."
+)
+FEED_DISCLAIMER = (
+    "La nota resume los datos de cada línea y la probabilidad es una estimación a partir del mercado: "
+    "no son una recomendación de apuesta ni garantizan nada. Apostar implica riesgo de perder dinero. "
+    "Solo para mayores de 18 años."
 )
 
 @asynccontextmanager
@@ -161,6 +166,9 @@ def settle_pending():
         for p in done:
             if isinstance(p, picks.Parlay):
                 out.append(picks.public_parlay(p, picks.legs_of(session, p.id)))
+            elif isinstance(p, feed.FeedCard):
+                out.append({"feed_card": p.id, "player": p.player_name, "stat": p.stat, "line": p.line,
+                            "side": p.side, "status": p.status, "actual": p.actual})
             else:
                 out.append(picks.public(p) if isinstance(p, picks.Pick) else _public(p))
         return {"settled": out}
@@ -439,6 +447,26 @@ def get_game(event_id: str, user=Depends(current_user)):
             "viewer": _viewer(user),
             "lines": [board.line_summary(p, board.is_unlocked(p, subscriber)) for p in lines],
             "disclaimer": DISCLAIMER,
+        }
+
+
+@app.get("/feed")
+def get_feed(game_date: date | None = None, user=Depends(current_user)):
+    """Mejores jugadas de una jornada: lado, nota y probabilidad estimada, y cómo le ha ido al
+    feed hasta ahora. Sin suscripción, antes del partido solo se ven las de las líneas gratis."""
+    with session_factory()() as session:
+        day = game_date.isoformat() if game_date else board.default_date(session)
+        subscriber = _sees_all(user)
+        cards = [feed.public_card(c, p, board.is_unlocked(p, subscriber))
+                 for c, p in (feed.cards_for(session, day) if day else [])]
+        cards.sort(key=lambda c: (c["status"] != "pending", -c["score"]))
+        return {
+            "game_date": day,
+            "dates": board.board_dates(session),
+            "viewer": _viewer(user),
+            "cards": cards,
+            "history": feed.summary(session),
+            "disclaimer": FEED_DISCLAIMER,
         }
 
 

@@ -20,13 +20,14 @@ import Chat from './pages/zona/Chat'
 import Cuenta from './pages/zona/Cuenta'
 import Entrar from './pages/zona/Entrar'
 import Informe from './pages/zona/Informe'
+import Jugadas from './pages/zona/Jugadas'
 import Partido from './pages/zona/Partido'
 import Partidos from './pages/zona/Partidos'
 import { CuentaProvider, useCuenta } from './lib/cuenta'
 import useReveal from './lib/useReveal'
 
 // Zona de partidos y cuenta: sin campo de tiros ni reloj, para leer datos sin ruido.
-const ZONA = ['/partidos', '/paper-bets', '/chat', '/entrar', '/cuenta', '/mis-picks', '/tipsters', '/dato-del-dia']
+const ZONA = ['/partidos', '/jugadas', '/paper-bets', '/chat', '/entrar', '/cuenta', '/mis-picks', '/tipsters', '/dato-del-dia']
 const enZona = (ruta) => ZONA.some((z) => ruta === z || ruta.startsWith(`${z}/`))
 
 function Combinada() {
@@ -65,7 +66,8 @@ export default function App() {
           <Route path="/paper-bets" element={<PaperBets />} />
           <Route path="/historial" element={<Navigate to="/mis-picks" replace />} />
           <Route path="/partidos" element={<Partidos />} />
-          <Route path="/proyecciones" element={<Navigate to="/partidos" replace />} />
+          <Route path="/jugadas" element={<Jugadas />} />
+          <Route path="/proyecciones" element={<Navigate to="/jugadas" replace />} />
           <Route path="/partidos/:eventId" element={<Partido />} />
           <Route path="/partidos/:eventId/:lineId" element={<Informe />} />
           <Route path="/chat" element={<Chat />} />

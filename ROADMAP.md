@@ -9,7 +9,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 **Esfuerzo:** B = 1 día o menos · M = 2-4 días · A = 5 días o más.
 
 **Cómo se trabaja**
-- Una tarea = un commit con su test y `pytest` en verde, en una rama por bloque. El autor fusiona el PR.
+- Una tarea = un commit con su test y `pytest` en verde, en una rama por bloque. Al terminar el bloque, Claude Code abre el PR y lo fusiona con los tests en verde (decisión del autor del 24-oct-2026), y lo cuenta en el resumen.
 - Lo que marca DECIDE EL AUTOR no se toca hasta que decida, y se le pregunta de una en una.
 - Nada de gastar créditos de The Odds API sin estimarlos antes y avisar.
 
@@ -19,7 +19,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | Siguiente | Estado |
 |---|---|
-| Bloque 2: nota y feed de mejores jugadas | SIGUIENTE |
+| Bloque 2: nota y feed de mejores jugadas, en la rama `mvp/bloque-2` | EN CURSO |
 
 ## Fechas clave
 
@@ -84,9 +84,9 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | ID | Tarea | Esfuerzo | Estado |
 |---|---|---|---|
-| 2.1 | Fórmula de la nota de 0 a 100 y su validación por deciles en la caché | M | PENDIENTE |
-| 2.2 | Feed en el backend: tarjetas con nota, probabilidad y razón; liquidación automática e historial | M | PENDIENTE |
-| 2.3 | Feed en la web | B-M | PENDIENTE |
+| 2.1 | Fórmula de la nota de 0 a 100 y su validación por deciles en la caché | M | HECHO |
+| 2.2 | Feed en el backend: tarjetas con nota, probabilidad y razón; liquidación automática e historial | M | HECHO |
+| 2.3 | Feed en la web | B-M | HECHO |
 
 ### Bloque 3: Tabla de props y fichas de jugador (6-7 días)
 
@@ -153,3 +153,8 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | Bloque 1: `propdeep/fair.py` (precio justo, calibración Platt, distribución anclada) y `scripts/calibracion.py`. Mes a mes, la probabilidad estimada mejora por poco el log-loss del mercado (0,69156 frente a 0,69190; la mezcla al 20 % lo empeoraba: 0,69225). Con desviación × 1,06, la distribución anclada acierta mejor que las casas en 112.886 líneas alternativas. Resultados en PLAN-PLATAFORMA §2.4. Cada línea publicada guarda ya su estimación |
 | 24-oct-2026 | PR #23 (bloque 0) y #24 (bloque 1) abiertos con `gh` |
 | 24-oct-2026 | Fusionados el #23 (bloque 0) y el #25 (bloque 1, sustituye al #24, que GitHub cerró al borrarse la rama del bloque 0). `main` con 127 tests en verde |
+| 24-oct-2026 | Claude Code abre y fusiona el PR de cada bloque (decisión del autor). Bloque 2 empezado en `mvp/bloque-2` |
+| 24-oct-2026 | 2.1: `propdeep/nota.py` y `scripts/validar_nota.py`. Ninguna parte de la nota predice el resultado más allá del precio justo (PLAN §2.5): se dejan los pesos del plan y la nota es un resumen de los datos, no una ventaja. El 88 % de los lados son "menos" (95 % con nota ≥ 60) y la probabilidad estimada va del 48 % al 55 % |
+| 24-oct-2026 | 2.2: `propdeep/feed.py`. Al publicar, cada línea con nota ≥ 60 deja una tarjeta inmutable con hash (lado, nota, probabilidad, razones) que se liquida sola con los partidos. `GET /feed`: tarjetas de la jornada (bloqueadas sin suscripción: solo nota y partido) y cómo le ha ido al feed (acierto frente a probabilidad media dicha) |
+| 24-oct-2026 | 2.3: página `/jugadas` ("Mejores jugadas", también en la cabecera y en Partidos): tarjetas con nota, lado, probabilidad estimada, razones y resultado al liquidarse; las bloqueadas solo enseñan nota y partido. Pregunta "¿Me vais a decir a qué apostar?" al día. CLAUDE.md al día. Bloque 2 terminado |
+| 24-oct-2026 | Revisada `/jugadas` en el navegador con datos de prueba. Arreglo: en el feed solo entran lados con probabilidad estimada ≥ 50 % (sin cuotas en pantalla, un "Más" al 49,6 % confundía) |

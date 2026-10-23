@@ -32,11 +32,14 @@ propdeep/
   clients/balldontlie.py  cliente Balldontlie (reintento ante 429 y caché)
   clients/odds.py       cliente The Odds API (props y moneyline)
   model.py              modelo: tendencias, proyección, probabilidad, quitar margen, análisis
+  fair.py               precio justo, probabilidad estimada (calibrada) y distribución anclada
+  nota.py               nota de 0 a 100 de una línea, su lado y sus razones
+  feed.py               feed de mejores jugadas: tarjetas guardadas con hash y liquidadas solas
   pipeline.py           Analyzer: junta datos, contexto, lesiones y llama a model.analyze; scan_day
   narrative.py          informe redactado por Claude o plantilla
   db.py                 tabla Prediction, publicar con hash, historial
   track_record.py       liquidar predicciones y resumen de rendimiento
-  board.py              zona de partidos (modo análisis y muro de pago)
+  board.py              zona de partidos (modo análisis y muro de pago); event_scans
   auto.py               jornada automática (AUTO_JORNADA)
   picks.py              "Mis picks" y combinadas (inmutables)
   paper.py              "Paper bets": bank simulado en euros
@@ -48,7 +51,7 @@ scripts/                utilidades por línea de comandos (ver sección 3)
 tests/                  pytest; tests/fakes.py simula las APIs (los tests no llaman a nada real)
 web/
   src/pages/            Home, MisPicks, PaperBets, Tipsters, legales y zona/ (Partidos, Partido,
-                        Informe, Chat, Cuenta, Entrar, DatoDelDia)
+                        Informe, Jugadas, Chat, Cuenta, Entrar, DatoDelDia)
   src/components/       piezas de la interfaz
   src/lib/              lógica de cliente (sesión, tablero, combinada, paper...)
   src/data/             datos de demo e informes de ejemplo
@@ -83,6 +86,8 @@ Scripts (con el venv activado, desde la raíz):
 - `python -m scripts.revision_jornada AAAA-MM-DD [--out archivo.csv]`: proyección frente a resultado de una jornada jugada.
 - `python -m scripts.backtest [--temporada 2025] [--lineas proxy|odds-api] [--desde AAAA-MM-DD] [--hasta AAAA-MM-DD] [--stats pts,reb,ast,fg3m] [--regiones us] [--minutos-antes 60] [--max-creditos N] [--estimar] [--solo-cache] [--todas-casas] [--sin-companeros] [--cache backtest_cache] [--salida backtest_out]`. Usar siempre `--estimar` o `--max-creditos` antes de gastar créditos de The Odds API; `--solo-cache` no gasta ninguno. Hoy la caché solo tiene puntos de 2025-26 (región `us`, 60 min antes). Último backtest limpio: `backtest_out\2026-10-24\` (con `--sin-companeros`).
 - `python -m scripts.analisis_peso backtest_out\2026-10-24\odds-api-casas\lineas.csv`: compara pesos del modelo.
+- `python -m scripts.calibracion [--alternativas]`: ajusta y valida la probabilidad estimada (`fair.py`) con el backtest guardado (0 créditos).
+- `python -m scripts.validar_nota`: ¿predice algo la nota (`nota.py`)? Con el backtest guardado (0 créditos).
 - `python -m scripts.analisis_companeros backtest_out\odds-api-casas\lineas.csv [--peso 0.2] [--ventaja 0.03]`.
 - `python -m scripts.informes_ejemplo AAAA-MM-DD [--max-events 3] [--out web/src/data/informes_ejemplo.json] [--regions eu]`.
 
@@ -107,7 +112,8 @@ Scripts (con el venv activado, desde la raíz):
 - El umbral `MIN_EDGE` decide el veredicto INTERNO (más/menos o "sin ventaja"). Ese veredicto se guarda en el historial para seguir midiendo el modelo y sale en `picks_hoy` para el autor.
 - La zona de partidos (`board.py`) está en modo análisis: enseña proyección, % sobre la línea, desgloses y cuotas de cada casa, pero NUNCA un más/menos como recomendación. El veredicto no sale de la API pública (`/board/top` se quitó el 24-oct-2026 porque lo dejaba entrever).
 - No mezclar los dos: no exponer el veredicto al usuario sin decisión expresa del autor.
-- Decisión del 23-oct-2026 (aún sin construir, ROADMAP bloque 2): el feed y el creador de combinadas enseñarán un lado con una NOTA de 0 a 100 y una PROBABILIDAD calibrada (anclada al precio justo del mercado). Nunca las palabras "EDGE" ni "ventaja", nunca un lado que la probabilidad calibrada vea peor que el mercado y sin cuotas en el generador.
+- Feed de mejores jugadas (decisión del autor del 23-oct-2026, hecho el 24-oct): `GET /feed` y la página `/jugadas` enseñan un LADO con una NOTA de 0 a 100 (`nota.py`) y una PROBABILIDAD estimada (`fair.py`: precio justo del mercado con una inclinación calibrada hacia el modelo). Nunca las palabras "EDGE" ni "ventaja", nunca un lado que la probabilidad estimada vea peor que el mercado y sin cuotas en el generador. La nota es un resumen de los datos: en el backtest ninguna parte predice más que el precio justo (PLAN-PLATAFORMA §2.5). Las tarjetas se guardan al publicar (nota ≥ 60) con su hash y se liquidan solas; su historial compara acierto con probabilidad media dicha.
+- El veredicto interno de `analyze` (umbral de 3 pp) sigue siendo solo interno; el feed no lo usa.
 
 ## 5. Partes críticas
 - `propdeep/model.py`: proyección, probabilidad, quitar margen, mezcla con el mercado y bloqueos.
@@ -123,7 +129,7 @@ Scripts (con el venv activado, desde la raíz):
 - Web: componentes `.jsx` con nombres en español, lógica en `src/lib/`, lint con oxlint.
 - Tests: cada cambio de lógica lleva su test en `tests/`, usando `tests/fakes.py` en vez de APIs reales.
 - Configuración centralizada en `propdeep/config.py` (`get_settings()`); defaults de la web en `web/src/config.js`. Una variable nueva va también en `.env.example`.
-- Endpoints: públicos `/board`, `/board/games/{id}`, `/board/lines/{id}`, `/picks`, `/tipsters`, `/waitlist`, `/chat`, `/auth/*`, `/me`. Admin con cabecera `x-admin-token` (`/admin/*`, p. ej. `POST /admin/board`, `POST /admin/analyze`). Picks y paper bets solo para correos de `ADMIN_EMAILS`.
+- Endpoints: públicos `/board`, `/board/games/{id}`, `/board/lines/{id}`, `/feed`, `/picks`, `/tipsters`, `/waitlist`, `/chat`, `/auth/*`, `/me`. Admin con cabecera `x-admin-token` (`/admin/*`, p. ej. `POST /admin/board`, `POST /admin/analyze`). Picks y paper bets solo para correos de `ADMIN_EMAILS`.
 - La web NO usa cookies ni servicios o fuentes de terceros. La sesión va en `localStorage`. Existe la página legal de privacidad y cookies (`Cookies.jsx`, `Privacidad.jsx`) porque la ley la pide, pero solo explica que no hay cookies: no añadas ninguna sin decisión del autor.
 - Diseño: llamativo, blanco y negro con campo de tiros dorado; nada de fondo oscuro con neón ni estética de plantilla.
 
@@ -169,7 +175,7 @@ Web (`web/.env.local` o el hosting):
 - Umbral de ventaja casi inalcanzable (se queda así: el bloque 1 del ROADMAP lo sustituye por la probabilidad calibrada). Con todas las casas por línea, `analisis_peso` da al modelo un peso de 0,06-0,08 y ninguna regla de peso y umbral con el IC por encima de 0. Con `MODEL_WEIGHT=0.2` y la ventaja medida frente a la probabilidad CON margen (`1/cuota`), el modelo tiene que separarse unos 28 pp del mercado para llegar a `MIN_EDGE=0.03`. Ejemplo con cuotas 1,90/1,90: mercado sin margen 50 %, con margen 52,6 % (el margen ya resta ~2,6 pp); hace falta `p_final` ≥ 55,6 %, es decir, `p_modelo` ≥ 78 %. En la práctica casi todo sale "sin ventaja". Hay que decidir si es intencionado (prudencia, dado que el backtest no mostró ventaja) o se ajusta (umbral o peso; la ventaja se sigue midiendo siempre frente a 1/cuota, que es lo que se paga de verdad). No cambiarlo sin decisión del autor y sin backtest.
 
 ## 10. Reglas para Claude Code
-- Claude Code coordina el proyecto desde el 23-oct-2026: trabaja por bloques del `ROADMAP.md`, una rama por bloque y un commit por tarea, y actualiza el ROADMAP (estado y registro) en cada tarea. El autor fusiona los PR y decide lo marcado como DECIDE EL AUTOR.
+- Claude Code coordina el proyecto desde el 23-oct-2026: trabaja por bloques del `ROADMAP.md`, una rama por bloque y un commit por tarea, y actualiza el ROADMAP (estado y registro) en cada tarea. Desde el 24-oct-2026 Claude Code también abre y fusiona el PR de cada bloque (con `gh`, ruta `C:\Program Files\GitHub CLI\gh.exe`) cuando los tests están en verde, y se lo cuenta al autor en el resumen. El autor decide lo marcado como DECIDE EL AUTOR.
 - Antes de cambiar lógica de cálculo, escribe un test que cubra el comportamiento actual. `pytest` en verde antes de cada commit. Si cambia un cálculo del modelo, sube `MODEL_VERSION` en `model.py`.
 - Cambios pequeños, un commit por cambio lógico.
 - No toques archivos `.env` ni subas claves ni datos personales.

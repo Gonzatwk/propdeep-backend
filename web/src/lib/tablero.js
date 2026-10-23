@@ -51,3 +51,7 @@ export const useLinea = (id) =>
   useCarga((s) => demoLinea(id, s), `/board/lines/${encodeURIComponent(id)}`, [id])
 
 export const usePicks = (version = 0) => useCarga(demoPicks, '/picks', [version])
+
+// Mejores jugadas (sin demostración: solo con datos reales).
+export const useJugadas = (fecha) =>
+  useCarga(() => null, fecha ? `/feed?game_date=${fecha}` : '/feed', [fecha])

@@ -49,6 +49,7 @@ export default function Header() {
         <nav aria-label="Principal" className="flex items-center sm:gap-1">
           <a href="/#como-funciona" className={`${link} hidden lg:inline-block`}>Cómo funciona</a>
           <NavLink to="/partidos" className={activo}>Partidos</NavLink>
+          <NavLink to="/jugadas" className={activo}>Jugadas</NavLink>
           <NavLink to="/chat" className={(e) => `${activo(e)} hidden md:inline-block`}>Chat</NavLink>
           <NavLink to="/mis-picks" className={activo}>Mis picks</NavLink>
           {usuario?.admin && <NavLink to="/paper-bets" className={activo}>Paper</NavLink>}

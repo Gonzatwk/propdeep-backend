@@ -164,6 +164,42 @@ Por distancia a la línea principal:
 - **[Opinión]** El generador no debe proponer "más" en umbrales altos. Las patas conservadoras (umbrales bajos) no están mal pagadas.
 - **Límites:** solo puntos, casas de EE. UU. y foto a 60 min. Para rebotes, asistencias y triples se usa lo mismo hasta tener datos. Desde el 24-oct cada línea publicada guarda su estimación (`analysis.estimate`) para poder validarlo con datos reales.
 
+### 2.5 Validación de la nota (24-oct-2026)
+
+Se calcula con `python -m scripts.validar_nota` (0 créditos) sobre 17.015 líneas principales de puntos de 2025-26, usando la misma función que el feed (`propdeep/nota.py`).
+
+**Por quintiles de nota.** Acierto del lado menos precio justo del mercado, en puntos:
+
+| Nota | n | Exceso | 1.ª mitad | 2.ª mitad |
+|---|---|---|---|---|
+| 3-23 | 3.507 | −0,3 ± 1,7 | −1,4 | +1,1 |
+| 24-30 | 3.468 | +2,4 ± 1,7 | +1,9 | +2,9 |
+| 31-38 | 3.241 | +0,0 ± 1,7 | −0,5 | +0,5 |
+| 39-51 | 3.460 | +1,2 ± 1,7 | +3,0 | −0,6 |
+| 52-99 | 3.339 | +2,9 ± 1,7 | +3,9 | +1,8 |
+
+**Por partes.** En una regresión logística con el precio justo como base, **ninguna parte de la nota predice el resultado**:
+
+| Parte | p (toda la temporada) |
+|---|---|
+| Valor del modelo | 0,26 |
+| Valor de precio | 0,91 |
+| Forma | 0,39 |
+| Matchup | 0,92 |
+| Fiabilidad | 0,47 |
+
+Por mitades, ninguna se repite: la forma da p = 0,09 en la 1.ª mitad y cambia de signo en la 2.ª.
+
+**Cómo saldría el feed:**
+- **Lado:** el 88 % de los lados son "menos", y el 95 % con nota ≥ 60. Es el sesgo hacia el menos que el mercado deja (α < 0 en la calibración; los "menos" ganan al precio justo por ~1 punto).
+- **Probabilidad:** la estimada va del 48 % al 55 % (percentiles 5 y 95).
+- **Calibración:** está bien calibrada. Con nota ≥ 60, el "menos" dice 52,8 % y gana el 52,3 %.
+
+**Decisión** (**[Opinión]** de Claude Code, coordinador):
+- Se dejan los pesos del plan. No hay datos que justifiquen otros, y ajustarlos a este ruido sería sobreajuste.
+- La nota es un **resumen de lo que dicen los datos de la línea**, no una probabilidad ni una ventaja. Lo único validado es la probabilidad estimada, y es la que debe pesar en los textos.
+- Con las cuotas españolas (margen del 5-8 %), estos lados no ganarían dinero. Cuando haya cuotas españolas (corrector de boletos o proveedor), se medirá de verdad.
+
 ---
 
 ## 3. Creador de combinadas (al estilo de RotoBot)
