@@ -26,6 +26,7 @@ class FakeBDL:
         self._b2b = b2b
         self.final_stats: dict[int, list[dict]] = {}
         self.scores: dict[int, tuple[int, int]] = {}  # game_id -> (local, visitante)
+        self.statuses: dict[int, str] = {}  # game_id -> estado que fuerza (p. ej. "Postponed")
 
     def find_player(self, name):
         return PLAYER if "doncic" in name.lower() else None
@@ -51,7 +52,8 @@ class FakeBDL:
     def game(self, game_id):
         final = game_id in self.final_stats or game_id in self.scores
         home, away = self.scores.get(game_id, (None, None))
-        return {"id": game_id, "status": "Final" if final else "7:30 pm ET", "home_team": TEAM,
+        status = self.statuses.get(game_id) or ("Final" if final else "7:30 pm ET")
+        return {"id": game_id, "status": status, "home_team": TEAM,
                 "visitor_team": OPP, "home_team_score": home, "visitor_team_score": away}
 
     def game_stats(self, game_id):

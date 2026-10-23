@@ -53,7 +53,11 @@ def tick(session: Session, analyzer, odds, bdl, settings, report: Callable, now:
     now = now or datetime.now(timezone.utc)
     done = {"settled": 0, "published": 0, "events": []}
     if pending(session) or pending_with_game(session) or pending_ml_unlinked(session):
-        done["settled"] = len(settle(session, bdl))
+        try:
+            done["settled"] = len(settle(session, bdl, now))
+        except Exception:  # noqa: BLE001 - sin liquidar se sigue publicando
+            session.rollback()
+            log.exception("No se pudo liquidar; se reintenta en la próxima vuelta")
 
     day = jornada(now)
     try:
