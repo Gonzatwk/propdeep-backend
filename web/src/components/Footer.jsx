@@ -11,7 +11,8 @@ export default function Footer() {
             <Logo />
             <p className="max-w-xs text-sm text-muted">Análisis estadístico de player props de la NBA, en español.</p>
           </div>
-          <section aria-label="Juego responsable" className="border border-white/50 p-5">
+          <section aria-labelledby="juego-responsable" className="border border-white/50 p-5">
+            <h2 id="juego-responsable" className="mb-3 text-sm font-bold tracking-wide text-gold uppercase">Juego responsable</h2>
             <p className="flex items-start gap-3 text-[0.95rem] leading-relaxed">
               <span className="tnum mt-0.5 shrink-0 bg-gold px-1.5 py-0.5 text-xs font-bold text-black">+18</span>
               <span>
@@ -19,6 +20,9 @@ export default function Footer() {
                 Apostar implica riesgo de perder dinero. Juega con moderación y solo con lo que puedas permitirte perder.
                 Si el juego deja de ser un entretenimiento, pide ayuda en{' '}
                 <a href="https://www.jugarbien.es" target="_blank" rel="noopener noreferrer" className="font-semibold underline">jugarbien.es</a>.
+                En España puedes autoexcluirte de todas las casas con licencia en el Registro General de Interdicciones de Acceso
+                al Juego (RGIAJ) de la{' '}
+                <a href="https://www.ordenacionjuego.es" target="_blank" rel="noopener noreferrer" className="font-semibold underline">Dirección General de Ordenación del Juego</a>.
               </span>
             </p>
           </section>
