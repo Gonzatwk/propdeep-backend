@@ -56,5 +56,8 @@ class FakeBDL:
         return {"id": game_id, "status": status, "home_team": TEAM,
                 "visitor_team": OPP, "home_team_score": home, "visitor_team_score": away}
 
+    def stats_on(self, day):
+        return self.day_stats.get(day, []) if hasattr(self, "day_stats") else []
+
     def game_stats(self, game_id):
         return self.final_stats.get(game_id, [])

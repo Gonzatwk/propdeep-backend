@@ -19,7 +19,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | Siguiente | Estado |
 |---|---|
-| Bloque 2: nota y feed de mejores jugadas, en la rama `mvp/bloque-2` | EN CURSO |
+| Bloque 3: tabla de props y fichas de jugador, en la rama `mvp/bloque-3` | EN CURSO |
 
 ## Fechas clave
 
@@ -92,7 +92,7 @@ Coordina Claude Code desde el 23-oct-2026, sobre el código real. Este archivo s
 
 | ID | Tarea | Esfuerzo | Estado |
 |---|---|---|---|
-| 3.1 | Tabla de boxscores de todos los partidos, actualizada a diario (`/v1/stats`) | M | PENDIENTE |
+| 3.1 | Tabla de boxscores de todos los partidos, actualizada a diario (`/v1/stats`) | M | HECHO |
 | 3.2 | Defensa del rival por posición, ritmo y uso calculados | M | PENDIENTE |
 | 3.3 | Endpoint de la ficha de jugador | B | PENDIENTE |
 | 3.4 | Tabla de props en la web (como "Explore Props") | M | PENDIENTE |
@@ -158,3 +158,5 @@ Chat (salvo F2.7), auditoría de tipsters, dato del día, moneyline, Stripe y cu
 | 24-oct-2026 | 2.2: `propdeep/feed.py`. Al publicar, cada línea con nota ≥ 60 deja una tarjeta inmutable con hash (lado, nota, probabilidad, razones) que se liquida sola con los partidos. `GET /feed`: tarjetas de la jornada (bloqueadas sin suscripción: solo nota y partido) y cómo le ha ido al feed (acierto frente a probabilidad media dicha) |
 | 24-oct-2026 | 2.3: página `/jugadas` ("Mejores jugadas", también en la cabecera y en Partidos): tarjetas con nota, lado, probabilidad estimada, razones y resultado al liquidarse; las bloqueadas solo enseñan nota y partido. Pregunta "¿Me vais a decir a qué apostar?" al día. CLAUDE.md al día. Bloque 2 terminado |
 | 24-oct-2026 | Revisada `/jugadas` en el navegador con datos de prueba. Arreglo: en el feed solo entran lados con probabilidad estimada ≥ 50 % (sin cuotas en pantalla, un "Más" al 49,6 % confundía) |
+| 24-oct-2026 | PR #27 (bloque 2) fusionado por Claude Code, con 137 tests en verde. Bloque 3 empezado |
+| 24-oct-2026 | 3.1: tabla `box_scores` (todos los jugadores de cada partido terminado, con posición). La jornada automática guarda lo que falte hasta ayer; `scripts/sincronizar_boxscores.py` rellena una temporada entera desde la caché del backtest (2025-26: 26.749 filas en 4 s, sin llamadas) o desde la API |

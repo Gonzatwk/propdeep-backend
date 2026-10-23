@@ -1,7 +1,8 @@
 """Jornada automática para el uso en el PC: publica cada partido y liquida sin hacer nada.
 
 Mientras el servidor está encendido, cada `AUTO_EVERY_MINUTES`:
-1. Liquida las predicciones y los picks cuyo partido ya ha terminado.
+1. Liquida las predicciones y los picks cuyo partido ya ha terminado, y guarda los boxscores de
+   las jornadas terminadas (defensa por posición, ritmo y uso).
 2. Mira los partidos de la jornada en The Odds API (la lista de partidos no gasta créditos) y
    analiza los que empiezan en menos de `AUTO_HOURS_BEFORE` horas y aún no están publicados.
    Cada análisis cuesta mercados x regiones créditos. Si un partido sale sin líneas o con algún
@@ -17,7 +18,7 @@ from typing import Callable
 
 from sqlalchemy.orm import Session
 
-from . import board, moneyline
+from . import board, boxscores, moneyline
 from .clients.odds import MARKETS
 from .db import pending
 from .picks import pending_ml_unlinked, pending_with_game
@@ -78,6 +79,11 @@ def tick(session: Session, analyzer, odds, bdl, settings, report: Callable, now:
             log.exception("No se pudo liquidar; se reintenta en la próxima vuelta")
 
     day = jornada(now)
+    try:
+        boxscores.sync(session, bdl, settings.current_season, day)
+    except Exception:  # noqa: BLE001 - sin boxscores nuevos se sigue publicando
+        session.rollback()
+        log.exception("No se pudieron guardar los boxscores; se reintenta en la próxima vuelta")
     try:
         moneyline.refresh(session, odds, day, now)
     except Exception:  # noqa: BLE001 - sin cuotas a ganador se sigue publicando

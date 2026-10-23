@@ -104,6 +104,10 @@ class BalldontlieClient:
         played = [r for r in rows if _minutes(r.get("min")) > 0]
         return sorted(played, key=lambda r: r["game"]["date"], reverse=True)
 
+    def stats_on(self, day: date) -> list[dict]:
+        """Estadísticas de todos los jugadores de una jornada (para guardar los boxscores)."""
+        return self._get_all("/stats", {"dates[]": day.isoformat()}, limit=2000)
+
     def game(self, game_id: int) -> dict:
         return self._request(f"/games/{game_id}").json()["data"]
 
